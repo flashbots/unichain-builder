@@ -1,0 +1,72 @@
+[package]
+name = "flashblocks"
+description = "Next-Gen Optimism L2 Block Builder"
+license = "MIT"
+version = "1.0.0"
+edition = "2024"
+rust-version = "1.87"
+homepage = "https://github.com/flashbots/flashblocks"
+authors = ["Flashbots <info@flashbots.net>"]
+exclude = [".github/"]
+
+[features]
+default = ["jemalloc"]
+jemalloc = ["rblib/jemalloc"]
+
+[dependencies]
+rblib = { git = "ssh://git@github.com/flashbots/rblib.git", tag = "v0.2.1" }
+
+futures = "0.3"
+tokio = "1.46"
+tokio-tungstenite = "0.27"
+parking_lot = "0.12"
+eyre = "0.6"
+moka = "0.12"
+tracing = "0.1"
+clap = { version = "4.4", features = ["derive", "env", "string"] }
+
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9.33"
+
+url = "2.5.2"
+rand = "0.9"
+derive_more = "2.0"
+shellexpand = "3.1"
+humantime = "2.2"
+atomic-time = "0.1"
+
+secp256k1 = "0.30"
+jsonrpsee = "0.25.1"
+
+alloy-json-rpc = "1.0.18"
+alloy-serde = "1.0.23"
+
+
+# reth dependencies
+reth-network-peers = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
+reth-db-api = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
+reth-node-builder = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
+reth-optimism-rpc = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
+
+[dev-dependencies]
+rblib = { git = "ssh://git@github.com/flashbots/rblib.git", tag = "v0.2.1", features = [
+  "test-utils",
+] }
+
+dashmap = "6.1"
+orx-concurrent-vec = "3.7.0"
+itertools = "0.14"
+
+[lints.rust]
+type_alias_bounds = "allow"
+
+[lints.clippy]
+tabs_in_doc_comments = "allow"
+pedantic = { level = "warn", priority = -1 }
+wildcard_imports = "allow"
+missing_errors_doc = "allow"
+must_use_candidate = "allow"
+redundant_closure_for_method_calls = "allow"
+similar_names = "allow"
+cast_precision_loss = "allow"

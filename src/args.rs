@@ -1,7 +1,7 @@
 //! Command line interface extensions for the Flashblocks builder.
 
 use {
-	crate::args::playground::PlaygroundOptions,
+	crate::playground::PlaygroundOptions,
 	clap::{CommandFactory, FromArgMatches, Parser},
 	core::{net::SocketAddr, time::Duration},
 	derive_more::{Deref, From, FromStr, Into},
@@ -15,8 +15,6 @@ use {
 	},
 	std::path::PathBuf,
 };
-
-mod playground;
 
 pub type Cli = OpCli<OpChainSpecParser, BuilderArgs>;
 

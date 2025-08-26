@@ -1,8 +1,7 @@
 //! Automatic builder playground configuration.
 //!
-//! This module is used mostly for testing purposes. It allows op-rbuilder to
-//! automatically configure itself to run against a running op-builder
-//! playground.
+//! This module is used mostly for testing purposes. It allows flashblocks to
+//! automatically configure itself to run against a running builder-playground.
 //!
 //! To setup the playground, checkout this repository:
 //!
@@ -13,16 +12,12 @@
 //!   go run main.go cook opstack --external-builder <http://host.docker.internal:4444>
 //!
 //! Wait until the playground is up and running, then run the following command
-//! to build op-rbuilder with flashblocks support:
+//! to start flashblocks against the playground:
 //!
-//!   cargo build --bin op-rbuilder -p op-rbuilder
-//!
-//! then run the following command to start op-rbuilder against the playground:
-//!
-//!   target/debug/op-rbuilder node --builder.playground
+//!   target/debug/flashblocks node --builder.playground
 //!
 //! This will automatically try to detect the playground configuration and apply
-//! it to the op-rbuilder startup settings.
+//! it to the flashblocks startup settings.
 //!
 //! Optionally you can specify the `--builder.playground` flag with a different
 //! directory to use. This is useful for testing against different playground

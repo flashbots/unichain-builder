@@ -1,3 +1,13 @@
+//! Flashblocks bundle
+//!
+//! This module defines the bundle type that is recognized by the Flashblocks
+//! builder. This bundle type is:
+//!
+//! - The bundle validation logic used by the builder to determine if a bundle
+//!   is valid and should be included in a block.
+//!
+//! - The `eth_sendBundle` input parameters and their validation.
+
 use {
 	crate::platform::FlashBlocks,
 	core::convert::Infallible,
@@ -46,6 +56,8 @@ pub struct FlashBlocksBundle {
 	)]
 	pub min_block_number: Option<u64>,
 
+	/// (Optional) Transactions from this bundle should never be included in
+	/// blocks with a block number higher than this value.
 	#[serde(
 		default,
 		with = "alloy_serde::quantity::opt",
@@ -53,16 +65,23 @@ pub struct FlashBlocksBundle {
 	)]
 	pub max_block_number: Option<u64>,
 
-	// Not recommended because this is subject to the builder node clock
+	/// (Optional) Specifies the minimum timestamp after which transactions in
+	/// this bundle may be included in a block.
+	///
+	/// Note: Not recommended because this is subject to the builder node clock.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub min_timestamp: Option<u64>,
 
-	// Not recommended because this is subject to the builder node clock
+	/// (Optional) Specifies the maximum timestamp after which transactions in
+	/// this bundle may not be included in a block.
+	///
+	/// Note: Not recommended because this is subject to the builder node clock.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub max_timestamp: Option<u64>,
 }
 
 impl FlashBlocksBundle {
+	#[allow(dead_code)]
 	pub fn with_transactions(
 		txs: Vec<Recovered<types::Transaction<FlashBlocks>>>,
 	) -> Self {
@@ -102,6 +121,8 @@ impl Bundle<FlashBlocks> for FlashBlocksBundle {
 		bundle
 	}
 
+	/// Tests the eligibility of the bundle for inclusion in a block before
+	/// executing any of its transactions.
 	fn is_eligible(&self, block: &BlockContext<FlashBlocks>) -> Eligibility {
 		if self.txs.is_empty() {
 			// empty bundles are never eligible
@@ -143,6 +164,14 @@ impl Bundle<FlashBlocks> for FlashBlocksBundle {
 		Eligibility::Eligible
 	}
 
+	/// Tests the ineligibility of the bundle for inclusion in a block given some
+	/// recent committed block header. This is used mostly to drop bundles at the
+	/// RPC level before they are sent to the order pool.
+	///
+	/// Returns true only when the bundle is definitively and irrevocably
+	/// ineligible (no false positives). It may return false for bundles that are
+	/// already permanently ineligible but not provable with the available header
+	/// data (possible false negatives).
 	fn is_permanently_ineligible(
 		&self,
 		block: &SealedHeader<types::Header<FlashBlocks>>,
@@ -169,10 +198,18 @@ impl Bundle<FlashBlocks> for FlashBlocksBundle {
 		false
 	}
 
+	/// Returns true if the bundle will be valid if a transaction with the given
+	/// hash reverts. Otherwise, returns false and it signals that this
+	/// transaction must have a successful (non-revert and non-fail) for the
+	/// bundle to be eligible for inclusion in a block.
 	fn is_allowed_to_fail(&self, tx: TxHash) -> bool {
 		self.reverting_tx_hashes.contains(&tx)
 	}
 
+	/// Returns true if the bundle will be valid if a transaction with the given
+	/// hash is removed from this bundle. Otherwise, returns false and it signals
+	/// that this transaction might not be removed from the bundle e.g. during
+	/// revert protection.
 	fn is_optional(&self, tx: TxHash) -> bool {
 		self.dropping_tx_hashes.contains(&tx)
 	}

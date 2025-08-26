@@ -1,6 +1,6 @@
 tab_spaces = 2
 hard_tabs = true
-edition = "2021"
+edition = "2024"
 fn_single_line = false
 format_code_in_doc_comments = true
 format_strings = true

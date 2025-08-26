@@ -1,7 +1,7 @@
 use {
 	crate::{
 		args::{BuilderArgs, FlashblocksArgs},
-		builders::pipeline,
+		build_pipeline,
 		platform::FlashBlocks,
 		rpc::TransactionStatusRpc,
 	},
@@ -147,7 +147,7 @@ impl TestNodeFactory<FlashBlocks> for FlashBlocks {
 	) -> eyre::Result<LocalNode<FlashBlocks, Self::ConsensusDriver>> {
 		let chainspec = chainspec::OP_DEV.as_ref().clone().with_funded_accounts();
 		let pool = OrderPool::<FlashBlocks>::default();
-		let pipeline = pipeline(&cli_args, &pool)?;
+		let pipeline = build_pipeline(&cli_args, &pool)?;
 
 		LocalNode::new(OptimismConsensusDriver, chainspec, move |builder| {
 			let opnode = OpNode::new(cli_args.rollup_args.clone());

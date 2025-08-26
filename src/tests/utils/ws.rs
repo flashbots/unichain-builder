@@ -1,5 +1,5 @@
 use {
-	crate::builders::flashblocks::FlashblocksPayloadV1,
+	crate::primitives::FlashblocksPayloadV1,
 	core::{
 		net::{IpAddr, Ipv4Addr, SocketAddr},
 		ops::Deref,

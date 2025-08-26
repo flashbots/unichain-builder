@@ -7,9 +7,13 @@ use {
 
 /// Defines the `FlashBlocks` platform.
 ///
-/// This platform is mainly fully derived from the Optimism platform with few
-/// modifications, such as:
-/// - Custom bundle type that is used to represent the `FlashBlocks` bundles.
+/// This platform is derived from the stock [`rblib::Optimism`] platform and
+/// inherits all its types and behaviors except the bundle definition.
+///
+/// See [`FlashBlocksBundle`] for more details on how bundles behave in
+/// the `FlashBlocks` platform.
+///
+/// See [`rblib::Platform`] for more details on platform definitions.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct FlashBlocks;
 

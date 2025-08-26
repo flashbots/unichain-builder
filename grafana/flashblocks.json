@@ -852,7 +852,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "reth_flashblocks_step_1_1_e_gas_per_block{quantile=\"0.5\"}",
+          "expr": "reth_flashblocks_step_1_1_e_gas_per_block",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A",
@@ -948,7 +948,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "reth_flashblocks_step_1_1_e_txs_per_block{quantile=\"0.5\"}",
+          "expr": "reth_flashblocks_step_1_1_e_txs_per_block",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A",
@@ -1141,7 +1141,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "reth_flashblocks_step_1_1_e_time_to_first_block{quantile=\"0.5\"}",
+          "expr": "reth_flashblocks_step_1_1_e_time_to_first_block",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A",
@@ -1210,7 +1210,7 @@
               }
             ]
           },
-          "unit": "s"
+          "unit": "ms"
         },
         "overrides": []
       },
@@ -1238,7 +1238,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "reth_flashblocks_step_1_1_e_intra_block_interval{quantile=\"0.95\"}",
+          "expr": "reth_flashblocks_step_1_1_e_intra_block_interval",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A",
@@ -1335,7 +1335,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "reth_flashblocks_step_1_1_e_inter_block_interval{quantile=\"0.5\"}",
+          "expr": "reth_flashblocks_step_1_1_e_inter_block_interval",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A",
@@ -1432,7 +1432,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "reth_flashblocks_step_1_1_e_idle_tail_time{quantile=\"0.5\"}",
+          "expr": "reth_flashblocks_step_1_1_e_idle_tail_time",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A",
@@ -4084,6 +4084,6 @@
   "timepicker": {},
   "timezone": "browser",
   "title": "Flashblock - Flashblocks Builder",
-  "version": 22,
+  "version": 25,
   "weekStart": ""
 }

@@ -1,3 +1,5 @@
+//! Public Flashblocks structures definition
+
 use {
 	rblib::{
 		alloy::primitives::{Address, B256, Bloom, Bytes, U256},

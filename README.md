@@ -1,6 +1,7 @@
 # Flashblocks Builder
 
-> todo: docs
+> [!CAUTION]
+> This is not stable or complete yet! Don't use it yet in any production or testing environments.
 
 Implemented using [rblib](https://github.com/flashbots/rblib).
 

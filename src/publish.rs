@@ -1,14 +1,22 @@
+//! Flashblocks WebSocket publisher
+//!
+//! This module defines:
+//!
+//! - The WebSocket sink that handles the physical websocket transport and
+//!   external subscription management.
+//!
+//! - The flashblock publishing pipeline step that is used in
+//!   `build_flashblocks_pipeline` to publish flashblocks during payload
+//!   building jobs.
+
 use {
-	super::{FlashblocksPayloadV1, ws::WebSocketPublisher},
-	crate::{
-		FlashBlocks,
-		builders::flashblocks::{
-			ExecutionPayloadBaseV1,
-			ExecutionPayloadFlashblockDeltaV1,
-		},
-	},
+	crate::{FlashBlocks, primitives::*},
 	atomic_time::AtomicOptionInstant,
-	core::sync::atomic::{AtomicU64, Ordering},
+	core::{
+		net::SocketAddr,
+		sync::atomic::{AtomicU64, Ordering},
+	},
+	futures::{SinkExt, StreamExt},
 	parking_lot::RwLock,
 	rblib::{
 		alloy::{
@@ -19,15 +27,37 @@ use {
 		prelude::*,
 	},
 	reth_node_builder::PayloadBuilderAttributes,
-	std::{sync::Arc, time::Instant},
+	std::{io, net::TcpListener, sync::Arc, time::Instant},
+	tokio::{
+		net::TcpStream,
+		sync::{
+			broadcast::{self, error::RecvError},
+			watch,
+		},
+	},
+	tokio_tungstenite::{
+		WebSocketStream,
+		accept_async,
+		tungstenite::{Message, Utf8Bytes},
+	},
+	tracing::{debug, trace},
 };
 
+/// Flashblocks pipeline step for publishing flashblocks to external
+/// subscribers.
+///
+/// This step will send a JSON serialized version of `FlashblocksPayloadV1` to
+/// the websocket sink that spans all payload checkpoints since the last
+/// barrier.
+///
+/// After publishing a flashblock it will place a new barrier in the payload
+/// marking all checkpoints so far as immutable.
 pub struct PublishFlashblock {
 	/// The websocket interface that manages flashblock publishing to external
 	/// subscribers.
-	sink: Arc<WebSocketPublisher>,
+	sink: Arc<WebSocketSink>,
 
-	/// Keeps track of the current flashblock number within the block.
+	/// Keeps track of the current flashblock number within the payload job.
 	block_number: AtomicU64,
 
 	/// Set once at the begining of the payload job, captures immutable
@@ -44,7 +74,7 @@ pub struct PublishFlashblock {
 }
 
 impl PublishFlashblock {
-	pub fn to(sink: &Arc<WebSocketPublisher>) -> Self {
+	pub fn to(sink: &Arc<WebSocketSink>) -> Self {
 		Self {
 			sink: Arc::clone(sink),
 			block_number: AtomicU64::default(),
@@ -95,8 +125,15 @@ impl Step<FlashBlocks> for PublishFlashblock {
 			index,
 			metadata: serde_json::Value::Null,
 		}) {
+			self.metrics.websocket_publish_errors_total.increment(1);
 			tracing::error!("Failed to publish flashblock to websocket: {e}");
+
+			// on transport error, do not place a barrier, just return the payload as
+			// is. it may be picked up by the next iteration.
+			return ControlFlow::Ok(payload);
 		}
+
+		// block published to WS successfully
 		self.times.on_published_block(&self.metrics);
 		self.capture_payload_metrics(&this_block_span);
 
@@ -106,6 +143,9 @@ impl Step<FlashBlocks> for PublishFlashblock {
 		ControlFlow::Ok(payload.barrier())
 	}
 
+	/// Before the payload job starts prepare the contents of the
+	/// `ExecutionPayloadBaseV1` since at this point we have all the information
+	/// we need to construct it and its content do not change throughout the job.
 	async fn before_job(
 		self: Arc<Self>,
 		ctx: StepContext<FlashBlocks>,
@@ -136,6 +176,8 @@ impl Step<FlashBlocks> for PublishFlashblock {
 		Ok(())
 	}
 
+	/// After a payload job completes, capture metrics and reset payload job
+	/// specific state.
 	async fn after_job(
 		self: Arc<Self>,
 		_: StepContext<FlashBlocks>,
@@ -151,6 +193,8 @@ impl Step<FlashBlocks> for PublishFlashblock {
 		Ok(())
 	}
 
+	/// Called during pipeline instantiation before any payload job is served.
+	/// - Configure metrics scope.
 	fn setup(
 		&mut self,
 		ctx: InitContext<FlashBlocks>,
@@ -161,12 +205,14 @@ impl Step<FlashBlocks> for PublishFlashblock {
 }
 
 impl PublishFlashblock {
-	// get a span that convers all payload checkpoints since the last barrier
-	// those are the transactions that are going to be in this flashblock.
-	// one exception is the first flashblock, we want to get all checkpoints
-	// since the begining of the block, because the `OptimismPrologue` step
-	// places a barrier after sequencer transactions and we want to broadcast
-	// those transactions as well.
+	/// Returns a span that covers all payload checkpoints since the last barrier.
+	/// Those are the transactions that are going to be published in this
+	/// flashblock.
+	///
+	/// One exception is the first flashblock, we want to get all checkpoints
+	/// since the begining of the block, because the `OptimismPrologue` step
+	/// places a barrier after sequencer transactions and we want to broadcast
+	/// those transactions as well.
 	fn unpublished_payload(
 		&self,
 		payload: &Checkpoint<FlashBlocks>,
@@ -185,10 +231,12 @@ impl PublishFlashblock {
 	fn capture_payload_metrics(&self, span: &Span<FlashBlocks>) {
 		self.metrics.blocks_total.increment(1);
 		self.metrics.gas_per_block.record(span.gas_used() as f64);
+
 		self
 			.metrics
 			.blob_gas_per_block
 			.record(span.blob_gas_used() as f64);
+
 		self
 			.metrics
 			.txs_per_block
@@ -238,8 +286,12 @@ struct Metrics {
 	/// The time beween the last published flashblock and the end of the payload
 	/// job.
 	pub idle_tail_time: Histogram,
+
+	/// The number of failures on the websocket transport layer.
+	pub websocket_publish_errors_total: Counter,
 }
 
+/// Used to track timing information for metrics.
 #[derive(Default)]
 struct Times {
 	pub job_started: AtomicOptionInstant,
@@ -307,5 +359,179 @@ impl Times {
 			let duration = last_block_at.duration_since(prev_at);
 			metrics.intra_block_interval.record(duration);
 		}
+	}
+}
+
+/// Manages the physical WebSocket transport layer.
+///
+/// This type is responsible for listening on new client connections and
+/// broadcasting new flashblocks to all connected peers through a websocket.
+pub struct WebSocketSink {
+	pipe: broadcast::Sender<Utf8Bytes>,
+	term: watch::Sender<bool>,
+}
+
+impl WebSocketSink {
+	pub fn new(address: SocketAddr) -> eyre::Result<Self> {
+		let (pipe, _) = broadcast::channel(100);
+		let (term, _) = watch::channel(false);
+
+		let listener = TcpListener::bind(address)?;
+
+		tokio::spawn(Self::listener_loop(
+			listener,
+			term.subscribe(),
+			pipe.subscribe(),
+		));
+
+		Ok(Self { pipe, term })
+	}
+
+	/// Watch for pipeline shutdown signals and stops the WebSocket publisher.
+	pub fn watch_shutdown(&self, pipeline: &Pipeline<FlashBlocks>) {
+		let term = self.term.clone();
+		let mut dropped_signal = pipeline.subscribe::<PipelineDropped>();
+		tokio::spawn(async move {
+			while (dropped_signal.next().await).is_some() {
+				let _ = term.send(true);
+			}
+		});
+	}
+
+	/// Called once by the `PublishFlashblock` pipeline step every time there is a
+	/// non-empty flashblock that needs to be broadcasted to all external
+	/// subscribers.
+	pub fn publish(&self, payload: &FlashblocksPayloadV1) -> io::Result<usize> {
+		// Serialize the payload to a UTF-8 string
+		// serialize only once, then just copy around only a pointer
+		// to the serialized data for each subscription.
+
+		let serialized = serde_json::to_string(payload)?;
+		let utf8_bytes = Utf8Bytes::from(serialized);
+		let size = utf8_bytes.len();
+
+		// send the serialized payload to all subscribers
+		self
+			.pipe
+			.send(utf8_bytes)
+			.map_err(|e| io::Error::new(io::ErrorKind::ConnectionAborted, e))?;
+
+		trace!("Broadcasting flashblock: {:?}", payload);
+
+		Ok(size)
+	}
+
+	async fn listener_loop(
+		listener: TcpListener,
+		term: watch::Receiver<bool>,
+		payloads: broadcast::Receiver<Utf8Bytes>,
+	) {
+		listener
+			.set_nonblocking(true)
+			.expect("Failed to set TcpListener socket to non-blocking");
+
+		let listener = tokio::net::TcpListener::from_std(listener)
+			.expect("Failed to convert TcpListener to tokio TcpListener");
+
+		let listen_addr = listener
+			.local_addr()
+			.expect("Failed to get local address of listener");
+		tracing::info!("Flashblocks WebSocket listening on {listen_addr}");
+
+		let mut term = term;
+
+		loop {
+			tokio::select! {
+				// Stop this loop if the pipeline or the publisher insteances are dropped
+				_ = term.changed() => {
+					if *term.borrow() {
+						return;
+					}
+				}
+
+				// Accept new connections on the websocket listener
+				// when a new connection is established, spawn a dedicated task to handle
+				// the connection and broadcast with that connection.
+				Ok((connection, peer_addr)) = listener.accept() => {
+						let term = term.clone();
+						let receiver_clone = payloads.resubscribe();
+
+						match accept_async(connection).await {
+							Ok(stream) => {
+								tokio::spawn(async move {
+									debug!("WebSocket connection established with {peer_addr}");
+									// Handle the WebSocket connection in a dedicated task
+									Self::broadcast_loop(stream, term, receiver_clone).await;
+									debug!("WebSocket connection closed for {peer_addr}");
+								});
+							}
+							Err(e) => {
+								debug!("Failed to accept WebSocket connection from {peer_addr}: {e}");
+							}
+						}
+				}
+			}
+		}
+	}
+
+	async fn broadcast_loop(
+		stream: WebSocketStream<TcpStream>,
+		term: watch::Receiver<bool>,
+		blocks: broadcast::Receiver<Utf8Bytes>,
+	) {
+		let mut term = term;
+		let mut blocks = blocks;
+		let mut stream = stream;
+
+		let Ok(peer_addr) = stream.get_ref().peer_addr() else {
+			return;
+		};
+
+		loop {
+			tokio::select! {
+				_ = term.changed() => {
+					if *term.borrow() {
+						return;
+					}
+				}
+
+				// Receive payloads from the broadcast channel
+				payload = blocks.recv() => match payload {
+					Ok(payload) => {
+							if let Err(e) = stream.send(Message::Text(payload)).await {
+									trace!("Closing flashblocks subscription for {peer_addr}: {e}");
+									break; // Exit the loop if sending fails
+							}
+					}
+					Err(RecvError::Closed) => {
+							return;
+					}
+					Err(RecvError::Lagged(_)) => {
+							trace!("Broadcast channel lagged, some messages were dropped for peer {peer_addr}");
+					}
+				},
+
+				Some(message) = stream.next() => {
+					match message {
+						Ok(Message::Close(_)) => {
+								trace!("Websocket connection closed graccefully by {peer_addr}");
+								break;
+						}
+						Err(e) => {
+								debug!("Websocket connection error for {peer_addr}: {e}");
+								break;
+						}
+						_ => (),
+					}
+				}
+			}
+		}
+	}
+}
+
+impl Drop for WebSocketSink {
+	fn drop(&mut self) {
+		// Notify the listener loop to terminate
+		let _ = self.term.send(true);
 	}
 }

@@ -1,4 +1,4 @@
-//! Tests for revert protection in `FlashBlocks` bundles.
+//! Tests for revert protection in `Flashblocks` bundles.
 //!
 //! Nomenclature (see `rblib::platform::ext::BundleExt` for more details):
 //!
@@ -13,24 +13,24 @@
 //!   bundle to be valid. This is the default mode for transactions in a bundle.
 
 use {
-	crate::{FlashBlocks, tests::*},
+	crate::{Flashblocks, tests::*},
 	tracing::debug,
 };
 
 #[tokio::test]
 async fn critical_reverted_tx_not_included() -> eyre::Result<()> {
-	let node = FlashBlocks::test_node().await?;
+	let node = Flashblocks::test_node().await?;
 
 	let bundle_without_reverts = random_valid_bundle(1);
 	let bundle_with_reverts = random_bundle_with_reverts(0, 1);
 
-	BundlesApiClient::<FlashBlocks>::send_bundle(
+	BundlesApiClient::<Flashblocks>::send_bundle(
 		&node.rpc_client().await?,
 		bundle_without_reverts.clone(),
 	)
 	.await?;
 
-	BundlesApiClient::<FlashBlocks>::send_bundle(
+	BundlesApiClient::<Flashblocks>::send_bundle(
 		&node.rpc_client().await?,
 		bundle_with_reverts.clone(),
 	)
@@ -54,7 +54,7 @@ async fn critical_reverted_tx_not_included() -> eyre::Result<()> {
 
 #[tokio::test]
 async fn faliable_reverted_included() -> eyre::Result<()> {
-	let node = FlashBlocks::test_node().await?;
+	let node = Flashblocks::test_node().await?;
 
 	// create a bundle with one valid tx
 	let bundle_without_reverts = random_valid_bundle(1);
@@ -68,13 +68,13 @@ async fn faliable_reverted_included() -> eyre::Result<()> {
 	// mark the second transaction (reverting) in the bundle as allowed to revert
 	bundle_with_reverts.reverting_tx_hashes = vec![bundle2_txs[1].tx_hash()];
 
-	BundlesApiClient::<FlashBlocks>::send_bundle(
+	BundlesApiClient::<Flashblocks>::send_bundle(
 		&node.rpc_client().await?,
 		bundle_without_reverts.clone(),
 	)
 	.await?;
 
-	BundlesApiClient::<FlashBlocks>::send_bundle(
+	BundlesApiClient::<Flashblocks>::send_bundle(
 		&node.rpc_client().await?,
 		bundle_with_reverts.clone(),
 	)
@@ -96,7 +96,7 @@ async fn faliable_reverted_included() -> eyre::Result<()> {
 
 #[tokio::test]
 async fn faliable_optional_reverted_not_included() -> eyre::Result<()> {
-	let node = FlashBlocks::test_node().await?;
+	let node = Flashblocks::test_node().await?;
 
 	// create a bundle with one valid and one reverting tx
 	let mut bundle_with_reverts = random_bundle_with_reverts(1, 1);
@@ -107,7 +107,7 @@ async fn faliable_optional_reverted_not_included() -> eyre::Result<()> {
 	bundle_with_reverts.reverting_tx_hashes = vec![txs[1].tx_hash()];
 	bundle_with_reverts.dropping_tx_hashes = vec![txs[1].tx_hash()];
 
-	BundlesApiClient::<FlashBlocks>::send_bundle(
+	BundlesApiClient::<Flashblocks>::send_bundle(
 		&node.rpc_client().await?,
 		bundle_with_reverts.clone(),
 	)
@@ -127,7 +127,7 @@ async fn faliable_optional_reverted_not_included() -> eyre::Result<()> {
 
 #[tokio::test]
 async fn when_disabled_reverted_txs_are_included() -> eyre::Result<()> {
-	let node = FlashBlocks::test_node_with_cli_args(BuilderArgs {
+	let node = Flashblocks::test_node_with_cli_args(BuilderArgs {
 		revert_protection: false,
 		..Default::default()
 	})
@@ -142,7 +142,7 @@ async fn when_disabled_reverted_txs_are_included() -> eyre::Result<()> {
 	bundle_with_reverts.reverting_tx_hashes = vec![txs[1].tx_hash()];
 	bundle_with_reverts.dropping_tx_hashes = vec![txs[1].tx_hash()];
 
-	BundlesApiClient::<FlashBlocks>::send_bundle(
+	BundlesApiClient::<Flashblocks>::send_bundle(
 		&node.rpc_client().await?,
 		bundle_with_reverts.clone(),
 	)

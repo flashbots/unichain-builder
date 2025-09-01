@@ -9,7 +9,7 @@
 //! - The `eth_sendBundle` input parameters and their validation.
 
 use {
-	crate::platform::FlashBlocks,
+	crate::platform::Flashblocks,
 	core::convert::Infallible,
 	rblib::{
 		alloy::{
@@ -31,14 +31,14 @@ use {
 /// This type is received from the `eth_sendBundle` RPC method.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct FlashBlocksBundle {
+pub struct FlashblocksBundle {
 	/// The list of transactions in the bundle.
 	///
 	/// Notes:
 	///  - The transactions are EIP-2718 encoded when serialized.
 	///  - Bundles must contain at least one transaction.
 	#[serde(with = "encoded_2718")]
-	pub txs: Vec<Recovered<types::Transaction<FlashBlocks>>>,
+	pub txs: Vec<Recovered<types::Transaction<Flashblocks>>>,
 
 	/// The list of transaction hashes in this bundle that are allowed to revert.
 	#[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -80,10 +80,10 @@ pub struct FlashBlocksBundle {
 	pub max_timestamp: Option<u64>,
 }
 
-impl FlashBlocksBundle {
+impl FlashblocksBundle {
 	#[allow(dead_code)]
 	pub fn with_transactions(
-		txs: Vec<Recovered<types::Transaction<FlashBlocks>>>,
+		txs: Vec<Recovered<types::Transaction<Flashblocks>>>,
 	) -> Self {
 		Self {
 			txs,
@@ -97,11 +97,11 @@ impl FlashBlocksBundle {
 	}
 }
 
-/// Implements rblib Bundle semantics for the `FlashBlocksBundle` type.
-impl Bundle<FlashBlocks> for FlashBlocksBundle {
+/// Implements rblib Bundle semantics for the `FlashblocksBundle` type.
+impl Bundle<Flashblocks> for FlashblocksBundle {
 	type PostExecutionError = Infallible;
 
-	fn transactions(&self) -> &[Recovered<types::Transaction<FlashBlocks>>] {
+	fn transactions(&self) -> &[Recovered<types::Transaction<Flashblocks>>] {
 		&self.txs
 	}
 
@@ -123,7 +123,7 @@ impl Bundle<FlashBlocks> for FlashBlocksBundle {
 
 	/// Tests the eligibility of the bundle for inclusion in a block before
 	/// executing any of its transactions.
-	fn is_eligible(&self, block: &BlockContext<FlashBlocks>) -> Eligibility {
+	fn is_eligible(&self, block: &BlockContext<Flashblocks>) -> Eligibility {
 		if self.txs.is_empty() {
 			// empty bundles are never eligible
 			return Eligibility::PermanentlyIneligible;
@@ -174,7 +174,7 @@ impl Bundle<FlashBlocks> for FlashBlocksBundle {
 	/// data (possible false negatives).
 	fn is_permanently_ineligible(
 		&self,
-		block: &SealedHeader<types::Header<FlashBlocks>>,
+		block: &SealedHeader<types::Header<Flashblocks>>,
 	) -> bool {
 		if self.transactions().is_empty() {
 			// empty bundles are never eligible
@@ -251,7 +251,7 @@ impl Bundle<FlashBlocks> for FlashBlocksBundle {
 mod encoded_2718 {
 	use {super::*, rblib::alloy::eips::Encodable2718};
 
-	type TxType = Recovered<types::Transaction<FlashBlocks>>;
+	type TxType = Recovered<types::Transaction<Flashblocks>>;
 
 	pub fn serialize<S>(
 		txs: &Vec<TxType>,
@@ -273,7 +273,7 @@ mod encoded_2718 {
 
 		let txs = encoded
 			.into_iter()
-			.map(|tx| types::Transaction::<FlashBlocks>::decode_2718(&mut &tx[..]))
+			.map(|tx| types::Transaction::<Flashblocks>::decode_2718(&mut &tx[..]))
 			.collect::<Result<Vec<_>, _>>()
 			.map_err(serde::de::Error::custom)?;
 

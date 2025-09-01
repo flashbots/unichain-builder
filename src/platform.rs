@@ -1,24 +1,24 @@
 use {
-	crate::bundle::FlashBlocksBundle,
+	crate::bundle::FlashblocksBundle,
 	rblib::prelude::*,
 	serde::{Deserialize, Serialize},
 	std::sync::Arc,
 };
 
-/// Defines the `FlashBlocks` platform.
+/// Defines the `Flashblocks` platform.
 ///
 /// This platform is derived from the stock [`rblib::Optimism`] platform and
 /// inherits all its types and behaviors except the bundle definition.
 ///
-/// See [`FlashBlocksBundle`] for more details on how bundles behave in
-/// the `FlashBlocks` platform.
+/// See [`FlashblocksBundle`] for more details on how bundles behave in
+/// the `Flashblocks` platform.
 ///
 /// See [`rblib::Platform`] for more details on platform definitions.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct FlashBlocks;
+pub struct Flashblocks;
 
-impl Platform for FlashBlocks {
-	type Bundle = FlashBlocksBundle;
+impl Platform for Flashblocks {
+	type Bundle = FlashblocksBundle;
 	type DefaultLimits = types::DefaultLimits<Optimism>;
 	type EvmConfig = types::EvmConfig<Optimism>;
 	type NodeTypes = types::NodeTypes<Optimism>;
@@ -56,7 +56,7 @@ impl Platform for FlashBlocks {
 	}
 }
 
-/// Inherits all optimism RPC types for the `FlashBlocks` platform.
-impl PlatformWithRpcTypes for FlashBlocks {
+/// Inherits all optimism RPC types for the `Flashblocks` platform.
+impl PlatformWithRpcTypes for Flashblocks {
 	type RpcTypes = types::RpcTypes<Optimism>;
 }

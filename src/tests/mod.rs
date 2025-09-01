@@ -1,5 +1,5 @@
 use {
-	crate::{args::BuilderArgs, bundle::FlashBlocksBundle},
+	crate::{args::BuilderArgs, bundle::FlashblocksBundle},
 	rand::{Rng, rng},
 	rblib::{
 		alloy::{
@@ -89,7 +89,7 @@ pub fn transfer_tx_compact(
 
 /// Will generate a random bundle with a given number of valid transactions.
 /// Transaction will be sending `1_000_000` + index wei to a random address.
-pub fn random_valid_bundle(tx_count: usize) -> FlashBlocksBundle {
+pub fn random_valid_bundle(tx_count: usize) -> FlashblocksBundle {
 	random_bundle_with_reverts(tx_count, 0)
 }
 
@@ -98,7 +98,7 @@ pub fn random_valid_bundle(tx_count: usize) -> FlashBlocksBundle {
 pub fn random_bundle_with_reverts(
 	non_reverting: usize,
 	reverting: usize,
-) -> FlashBlocksBundle {
+) -> FlashblocksBundle {
 	const SIGNERS_COUNT: usize = FundedAccounts::len();
 	let mut txs = Vec::new();
 	let mut nonces = [0u64; SIGNERS_COUNT];
@@ -143,5 +143,5 @@ pub fn random_bundle_with_reverts(
 			.with_signer(signer.address());
 		txs.push(tx);
 	}
-	FlashBlocksBundle::with_transactions(txs)
+	FlashblocksBundle::with_transactions(txs)
 }

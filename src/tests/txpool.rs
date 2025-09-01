@@ -1,5 +1,5 @@
 use {
-	crate::{FlashBlocks, tests::assert_has_sequencer_tx},
+	crate::{Flashblocks, tests::assert_has_sequencer_tx},
 	rblib::{
 		alloy::{
 			consensus::Transaction,
@@ -16,7 +16,7 @@ use {
 /// that are not part of a bundle make their way into the block.
 #[tokio::test]
 async fn non_bundle_tx_included_in_block() -> eyre::Result<()> {
-	let node = FlashBlocks::test_node().await?;
+	let node = Flashblocks::test_node().await?;
 
 	let txhash = *node
 		.send_tx(node.build_tx().transfer().value(U256::from(1_234_000)))
@@ -40,7 +40,7 @@ async fn non_bundle_tx_included_in_block() -> eyre::Result<()> {
 /// Ensure that a reverted transaction is reported as dropped by the RPC.
 #[tokio::test]
 async fn reverted_transaction_reports_dropped_status() -> eyre::Result<()> {
-	let node = FlashBlocks::test_node().await?;
+	let node = Flashblocks::test_node().await?;
 
 	let ok_txhash = *node
 		.send_tx(node.build_tx().transfer().value(U256::from(1_234_000)))

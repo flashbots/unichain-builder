@@ -1,7 +1,7 @@
 //! Smoke tests for the standard blocks builder
 
 use {
-	crate::{FlashBlocks, tests::assert_has_sequencer_tx},
+	crate::{Flashblocks, tests::assert_has_sequencer_tx},
 	rblib::{
 		alloy::{
 			consensus::Transaction,
@@ -18,7 +18,7 @@ use {
 #[tokio::test]
 async fn chain_produces_empty_blocks() -> eyre::Result<()> {
 	// builders signer is not configured, so won't produce a builder tx
-	let node = FlashBlocks::test_node().await?;
+	let node = Flashblocks::test_node().await?;
 
 	for i in 1..5 {
 		let block = node.next_block().await?;
@@ -38,7 +38,7 @@ async fn chain_produces_blocks_with_txs() -> eyre::Result<()> {
 	const TXS_PER_BLOCK: usize = 5;
 
 	// builders signer is not configured, so won't produce a builder tx
-	let node = FlashBlocks::test_node().await?;
+	let node = Flashblocks::test_node().await?;
 
 	for i in 1..=BLOCKS {
 		let mut txs = Vec::with_capacity(TXS_PER_BLOCK);
@@ -65,7 +65,7 @@ async fn chain_produces_blocks_with_txs() -> eyre::Result<()> {
 /// when the builder signer is provided in the CLI arguments.
 #[tokio::test]
 async fn blocks_have_builder_tx() -> eyre::Result<()> {
-	let node = FlashBlocks::test_node_with_builder_signer().await?;
+	let node = Flashblocks::test_node_with_builder_signer().await?;
 
 	let block = node.next_block().await?;
 	debug!("produced block: {block:#?}");

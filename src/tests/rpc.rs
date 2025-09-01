@@ -1,5 +1,5 @@
 use {
-	crate::{FlashBlocks, bundle::FlashBlocksBundle, tests::random_valid_bundle},
+	crate::{Flashblocks, bundle::FlashblocksBundle, tests::random_valid_bundle},
 	jsonrpsee::core::ClientError,
 	rblib::pool::BundlesApiClient,
 };
@@ -29,7 +29,7 @@ macro_rules! assert_ineligible {
 /// should be rejected by the RPC before making it to the orders pool.
 #[tokio::test]
 async fn max_block_number_in_past() -> eyre::Result<()> {
-	let node = FlashBlocks::test_node().await?;
+	let node = Flashblocks::test_node().await?;
 
 	let block = node.next_block().await?;
 	assert_eq!(block.number(), 1);
@@ -46,7 +46,7 @@ async fn max_block_number_in_past() -> eyre::Result<()> {
 	let mut bundle = random_valid_bundle(1);
 	bundle.max_block_number = Some(2);
 
-	let result = BundlesApiClient::<FlashBlocks>::send_bundle(
+	let result = BundlesApiClient::<Flashblocks>::send_bundle(
 		&node.rpc_client().await?,
 		bundle,
 	)
@@ -63,12 +63,12 @@ async fn max_block_number_in_past() -> eyre::Result<()> {
 #[tokio::test]
 async fn max_block_timestamp_in_past() -> eyre::Result<()> {
 	// node at genesis, block 0
-	let node = FlashBlocks::test_node().await?;
+	let node = Flashblocks::test_node().await?;
 	let genesis_timestamp = node.config().chain.genesis_timestamp();
 	let mut bundle = random_valid_bundle(1);
 	bundle.max_timestamp = Some(genesis_timestamp.saturating_sub(1));
 
-	let result = BundlesApiClient::<FlashBlocks>::send_bundle(
+	let result = BundlesApiClient::<Flashblocks>::send_bundle(
 		&node.rpc_client().await?,
 		bundle,
 	)
@@ -81,10 +81,10 @@ async fn max_block_timestamp_in_past() -> eyre::Result<()> {
 
 #[tokio::test]
 async fn empty_bundle_rejected_by_rpc() -> eyre::Result<()> {
-	let node = FlashBlocks::test_node().await?;
+	let node = Flashblocks::test_node().await?;
 
-	let empty_bundle = FlashBlocksBundle::with_transactions(vec![]);
-	let result = BundlesApiClient::<FlashBlocks>::send_bundle(
+	let empty_bundle = FlashblocksBundle::with_transactions(vec![]);
+	let result = BundlesApiClient::<Flashblocks>::send_bundle(
 		&node.rpc_client().await?,
 		empty_bundle,
 	)

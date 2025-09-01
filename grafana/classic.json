@@ -141,7 +141,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "reth_standard_payloads_jobs_completed",
+          "expr": "reth_classic_payloads_jobs_completed",
           "instant": true,
           "legendFormat": "__auto",
           "range": false,
@@ -212,7 +212,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_payloads_job_deadline",
+          "expr": "reth_classic_payloads_job_deadline",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -278,7 +278,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_payloads_block_number",
+          "expr": "reth_classic_payloads_block_number",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -344,7 +344,7 @@
           },
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "rate(reth_standard_payloads_gas_used_total[$__rate_interval])",
+          "expr": "rate(reth_classic_payloads_gas_used_total[$__rate_interval])",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -412,7 +412,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "reth_standard_payloads_tx_count_total",
+          "expr": "reth_classic_payloads_tx_count_total",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -479,7 +479,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "reth_standard_payloads_gas_used_total",
+          "expr": "reth_classic_payloads_gas_used_total",
           "format": "time_series",
           "instant": false,
           "legendFormat": "__auto",
@@ -547,7 +547,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "reth_standard_payloads_blob_gas_total",
+          "expr": "reth_classic_payloads_blob_gas_total",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -613,7 +613,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_payloads_fees_total / 1e18",
+          "expr": "reth_classic_payloads_fees_total / 1e18",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -681,7 +681,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "reth_standard_payloads_jobs_failed",
+          "expr": "reth_classic_payloads_jobs_failed",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -755,7 +755,7 @@
               "options": {
                 "mode": "exclude",
                 "names": [
-                  "{__name__=\"reth_standard_payloads_tx_count_histogram\", instance=\"host.docker.internal:5559\", job=\"my_exporter\", quantile=\"0.95\"}"
+                  "{__name__=\"reth_classic_payloads_tx_count_histogram\", instance=\"host.docker.internal:5559\", job=\"my_exporter\", quantile=\"0.95\"}"
                 ],
                 "prefix": "All except:",
                 "readOnly": true
@@ -802,7 +802,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_payloads_tx_count_histogram{quantile=\"0.95\"}",
+          "expr": "reth_classic_payloads_tx_count_histogram{quantile=\"0.95\"}",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
@@ -904,7 +904,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_payloads_jobs_completed / (reth_standard_payloads_jobs_failed + reth_standard_payloads_jobs_completed)",
+          "expr": "reth_classic_payloads_jobs_completed / (reth_classic_payloads_jobs_failed + reth_classic_payloads_jobs_completed)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1004,7 +1004,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_payloads_gas_used_histogram{quantile=\"0.95\"}",
+          "expr": "reth_classic_payloads_gas_used_histogram{quantile=\"0.95\"}",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1076,7 +1076,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "reth_standard_payloads_job_duration"
+              "options": "reth_classic_payloads_job_duration"
             },
             "properties": [
               {
@@ -1092,7 +1092,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "{__name__=\"reth_standard_payloads_job_deadline\", instance=\"host.docker.internal:5559\", job=\"my_exporter\"}"
+              "options": "{__name__=\"reth_classic_payloads_job_deadline\", instance=\"host.docker.internal:5559\", job=\"my_exporter\"}"
             },
             "properties": [
               {
@@ -1104,7 +1104,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "reth_standard_payloads_job_deadline"
+              "options": "reth_classic_payloads_job_deadline"
             },
             "properties": [
               {
@@ -1147,7 +1147,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_pipeline_exec_duration_histogram{quantile=\"0.95\"}",
+          "expr": "reth_classic_pipeline_exec_duration_histogram{quantile=\"0.95\"}",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1158,7 +1158,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_payloads_job_deadline",
+          "expr": "reth_classic_payloads_job_deadline",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -1261,7 +1261,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_payloads_gas_utilized{quantile=\"0.95\"}",
+          "expr": "reth_classic_payloads_gas_utilized{quantile=\"0.95\"}",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1362,7 +1362,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_payloads_fees_histogram{quantile=\"0.95\"} / 1e18",
+          "expr": "reth_classic_payloads_fees_histogram{quantile=\"0.95\"} / 1e18",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1381,7 +1381,7 @@
       },
       "id": 20,
       "panels": [],
-      "title": "Standard Builder Pipeline (real-time)",
+      "title": "Classic Builder Pipeline (real-time)",
       "type": "row"
     },
     {
@@ -1411,7 +1411,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "{__name__=\"reth_standard_step_1_1_exec_duration_per_job\", instance=\"host.docker.internal:5559\", job=\"my_exporter\", quantile=\"0.95\"}"
+              "options": "{__name__=\"reth_classic_step_1_1_exec_duration_per_job\", instance=\"host.docker.internal:5559\", job=\"my_exporter\", quantile=\"0.95\"}"
             },
             "properties": [
               {
@@ -1423,7 +1423,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "{__name__=\"reth_standard_step_1_2_exec_duration_per_job\", instance=\"host.docker.internal:5559\", job=\"my_exporter\", quantile=\"0.95\"}"
+              "options": "{__name__=\"reth_classic_step_1_2_exec_duration_per_job\", instance=\"host.docker.internal:5559\", job=\"my_exporter\", quantile=\"0.95\"}"
             },
             "properties": [
               {
@@ -1435,7 +1435,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "{__name__=\"reth_standard_step_1_3_exec_duration_per_job\", instance=\"host.docker.internal:5559\", job=\"my_exporter\", quantile=\"0.95\"}"
+              "options": "{__name__=\"reth_classic_step_1_3_exec_duration_per_job\", instance=\"host.docker.internal:5559\", job=\"my_exporter\", quantile=\"0.95\"}"
             },
             "properties": [
               {
@@ -1447,7 +1447,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "{__name__=\"reth_standard_step_p_exec_duration_per_job\", instance=\"host.docker.internal:5559\", job=\"my_exporter\", quantile=\"0.95\"}"
+              "options": "{__name__=\"reth_classic_step_p_exec_duration_per_job\", instance=\"host.docker.internal:5559\", job=\"my_exporter\", quantile=\"0.95\"}"
             },
             "properties": [
               {
@@ -1459,7 +1459,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "reth_standard_step_1_1_invoked_per_job"
+              "options": "reth_classic_step_1_1_invoked_per_job"
             },
             "properties": [
               {
@@ -1517,7 +1517,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_step_p_exec_duration_per_job{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_p_exec_duration_per_job{quantile=\"0.95\"}",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -1531,7 +1531,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "reth_standard_step_1_1_exec_duration_per_job{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_1_1_exec_duration_per_job{quantile=\"0.95\"}",
           "format": "time_series",
           "instant": true,
           "legendFormat": "__auto",
@@ -1544,7 +1544,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_step_1_2_exec_duration_per_job{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_1_2_exec_duration_per_job{quantile=\"0.95\"}",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -1557,7 +1557,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_step_1_3_exec_duration_per_job{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_1_3_exec_duration_per_job{quantile=\"0.95\"}",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -1570,7 +1570,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_step_1_1_invoked_per_job{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_1_1_invoked_per_job{quantile=\"0.95\"}",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -1605,7 +1605,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "{__name__=\"reth_standard_step_1_1_exec_duration_per_job\", instance=\"host.docker.internal:5559\", job=\"my_exporter\", quantile=\"0.95\"}"
+              "options": "{__name__=\"reth_classic_step_1_1_exec_duration_per_job\", instance=\"host.docker.internal:5559\", job=\"my_exporter\", quantile=\"0.95\"}"
             },
             "properties": [
               {
@@ -1617,7 +1617,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "{__name__=\"reth_standard_step_1_2_exec_duration_per_job\", instance=\"host.docker.internal:5559\", job=\"my_exporter\", quantile=\"0.95\"}"
+              "options": "{__name__=\"reth_classic_step_1_2_exec_duration_per_job\", instance=\"host.docker.internal:5559\", job=\"my_exporter\", quantile=\"0.95\"}"
             },
             "properties": [
               {
@@ -1629,7 +1629,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "{__name__=\"reth_standard_step_1_3_exec_duration_per_job\", instance=\"host.docker.internal:5559\", job=\"my_exporter\", quantile=\"0.95\"}"
+              "options": "{__name__=\"reth_classic_step_1_3_exec_duration_per_job\", instance=\"host.docker.internal:5559\", job=\"my_exporter\", quantile=\"0.95\"}"
             },
             "properties": [
               {
@@ -1641,7 +1641,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "{__name__=\"reth_standard_step_p_exec_duration_per_job\", instance=\"host.docker.internal:5559\", job=\"my_exporter\", quantile=\"0.95\"}"
+              "options": "{__name__=\"reth_classic_step_p_exec_duration_per_job\", instance=\"host.docker.internal:5559\", job=\"my_exporter\", quantile=\"0.95\"}"
             },
             "properties": [
               {
@@ -1688,7 +1688,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "reth_standard_step_1_1_exec_duration_per_job{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_1_1_exec_duration_per_job{quantile=\"0.95\"}",
           "format": "time_series",
           "instant": true,
           "legendFormat": "__auto",
@@ -1701,7 +1701,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_step_1_2_exec_duration_per_job{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_1_2_exec_duration_per_job{quantile=\"0.95\"}",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -1714,7 +1714,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_step_1_3_exec_duration_per_job{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_1_3_exec_duration_per_job{quantile=\"0.95\"}",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -1727,7 +1727,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_step_p_exec_duration_per_job{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_p_exec_duration_per_job{quantile=\"0.95\"}",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -1827,7 +1827,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "builder",
-          "expr": "reth_standard_step_1_1_exec_duration_histogram{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_1_1_exec_duration_histogram{quantile=\"0.95\"}",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1926,7 +1926,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_step_1_1_exec_duration_per_job{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_1_1_exec_duration_per_job{quantile=\"0.95\"}",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2025,7 +2025,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_step_1_2_exec_duration_histogram{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_1_2_exec_duration_histogram{quantile=\"0.95\"}",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2124,7 +2124,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_step_1_2_exec_duration_per_job{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_1_2_exec_duration_per_job{quantile=\"0.95\"}",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2222,7 +2222,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_step_e_exec_duration_histogram{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_e_exec_duration_histogram{quantile=\"0.95\"}",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2321,7 +2321,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_step_1_3_exec_duration_histogram{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_1_3_exec_duration_histogram{quantile=\"0.95\"}",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2420,7 +2420,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_step_p_exec_duration_histogram{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_p_exec_duration_histogram{quantile=\"0.95\"}",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2519,7 +2519,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_step_p_exec_duration_per_job{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_p_exec_duration_per_job{quantile=\"0.95\"}",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2597,7 +2597,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_step_1_3_txs_dropped_total",
+          "expr": "reth_classic_step_1_3_txs_dropped_total",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2662,7 +2662,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_step_1_3_gas_dropped_total",
+          "expr": "reth_classic_step_1_3_gas_dropped_total",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2760,7 +2760,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_step_1_3_txs_dropped_per_job{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_1_3_txs_dropped_per_job{quantile=\"0.95\"}",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2858,7 +2858,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_step_1_3_gas_dropped_per_job{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_1_3_gas_dropped_per_job{quantile=\"0.95\"}",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2958,7 +2958,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "reth_standard_step_1_3_txs_dropped_per_job{quantile=\"0.95\"} / reth_standard_step_1_1_per_job_txs_included{quantile=\"0.95\"}",
+          "expr": "reth_classic_step_1_3_txs_dropped_per_job{quantile=\"0.95\"} / reth_classic_step_1_1_per_job_txs_included{quantile=\"0.95\"}",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -3289,7 +3289,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Flashblock - Standard Builder",
+  "title": "Flashblock - Classic Builder",
   "version": 12,
   "weekStart": ""
 }

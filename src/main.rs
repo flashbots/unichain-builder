@@ -1,11 +1,12 @@
 use {
 	crate::{
 		args::{BuilderArgs, Cli, CliExt},
+		limits::FlashblockLimits,
 		publish::{PublishFlashblock, WebSocketSink},
 		rpc::TransactionStatusRpc,
 	},
 	core::num::NonZero,
-	platform::FlashBlocks,
+	platform::Flashblocks,
 	rblib::{pool::*, prelude::*, reth, steps::*},
 	reth::optimism::node::{
 		OpEngineApiBuilder,
@@ -17,6 +18,7 @@ use {
 
 mod args;
 mod bundle;
+mod limits;
 mod platform;
 mod playground;
 mod primitives;
@@ -29,7 +31,7 @@ mod tests;
 fn main() {
 	Cli::parsed()
 		.run(|builder, cli_args| async move {
-			let pool = OrderPool::<FlashBlocks>::default();
+			let pool = OrderPool::<Flashblocks>::default();
 			let pipeline = build_pipeline(&cli_args, &pool)?;
 			let opnode = OpNode::new(cli_args.rollup_args.clone());
 			let tx_status_rpc = TransactionStatusRpc::new(&pipeline);
@@ -45,7 +47,7 @@ fn main() {
 				)
 				.with_add_ons(
 					opnode
-						.add_ons_builder::<types::RpcTypes<FlashBlocks>>()
+						.add_ons_builder::<types::RpcTypes<Flashblocks>>()
 						.build::<_, OpEngineValidatorBuilder, OpEngineApiBuilder<OpEngineValidatorBuilder>>(),
 				)
 				.extend_rpc_modules(move |mut rpc_ctx| {
@@ -63,8 +65,8 @@ fn main() {
 
 fn build_pipeline(
 	cli_args: &BuilderArgs,
-	pool: &OrderPool<FlashBlocks>,
-) -> eyre::Result<Pipeline<FlashBlocks>> {
+	pool: &OrderPool<Flashblocks>,
+) -> eyre::Result<Pipeline<Flashblocks>> {
 	let mut pipeline = if cli_args.flashblocks_args.enabled() {
 		build_flashblocks_pipeline(cli_args, pool)?
 	} else {
@@ -88,10 +90,10 @@ fn build_pipeline(
 /// producing one block payload per CL payload job.
 fn build_classic_pipeline(
 	cli_args: &BuilderArgs,
-	pool: &OrderPool<FlashBlocks>,
-) -> Pipeline<FlashBlocks> {
+	pool: &OrderPool<Flashblocks>,
+) -> Pipeline<Flashblocks> {
 	if cli_args.revert_protection {
-		Pipeline::<FlashBlocks>::named("standard")
+		Pipeline::<Flashblocks>::named("classic")
 			.with_prologue(OptimismPrologue)
 			.with_pipeline(
 				Loop,
@@ -102,7 +104,7 @@ fn build_classic_pipeline(
 				),
 			)
 	} else {
-		Pipeline::<FlashBlocks>::named("standard")
+		Pipeline::<Flashblocks>::named("classic")
 			.with_prologue(OptimismPrologue)
 			.with_pipeline(
 				Loop,
@@ -113,8 +115,8 @@ fn build_classic_pipeline(
 
 fn build_flashblocks_pipeline(
 	cli_args: &BuilderArgs,
-	pool: &OrderPool<FlashBlocks>,
-) -> eyre::Result<Pipeline<FlashBlocks>> {
+	pool: &OrderPool<Flashblocks>,
+) -> eyre::Result<Pipeline<Flashblocks>> {
 	let socket_address = cli_args
 		.flashblocks_args
 		.ws_address()
@@ -130,7 +132,7 @@ fn build_flashblocks_pipeline(
 
 	let ws = Arc::new(WebSocketSink::new(socket_address)?);
 
-	let pipeline = Pipeline::<FlashBlocks>::named("flashblocks")
+	let pipeline = Pipeline::<Flashblocks>::named("flashblocks")
 		.with_prologue(OptimismPrologue)
 		.with_pipeline(
 			Loop,
@@ -144,7 +146,7 @@ fn build_flashblocks_pipeline(
 						BreakAfterDeadline,
 					)
 						.with_epilogue(PublishFlashblock::to(&ws))
-						.with_limits(Scaled::default().deadline(Fixed(interval))),
+						.with_limits(FlashblockLimits::with_interval(interval)),
 				)
 				.with_step(BreakAfterDeadline),
 		)

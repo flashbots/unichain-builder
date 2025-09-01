@@ -2,7 +2,7 @@ use {
 	crate::{
 		args::{BuilderArgs, FlashblocksArgs},
 		build_pipeline,
-		platform::FlashBlocks,
+		platform::Flashblocks,
 		rpc::TransactionStatusRpc,
 	},
 	core::{net::SocketAddr, time::Duration},
@@ -24,21 +24,21 @@ use {
 	std::time::{SystemTime, UNIX_EPOCH},
 };
 
-impl FlashBlocks {
+impl Flashblocks {
 	pub async fn test_node_with_cli_args(
 		cli_args: BuilderArgs,
-	) -> eyre::Result<LocalNode<FlashBlocks, OptimismConsensusDriver>> {
-		FlashBlocks::create_test_node_with_args(Pipeline::default(), cli_args).await
+	) -> eyre::Result<LocalNode<Flashblocks, OptimismConsensusDriver>> {
+		Flashblocks::create_test_node_with_args(Pipeline::default(), cli_args).await
 	}
 
 	pub async fn test_node()
-	-> eyre::Result<LocalNode<FlashBlocks, OptimismConsensusDriver>> {
-		FlashBlocks::test_node_with_cli_args(BuilderArgs::default()).await
+	-> eyre::Result<LocalNode<Flashblocks, OptimismConsensusDriver>> {
+		Flashblocks::test_node_with_cli_args(BuilderArgs::default()).await
 	}
 
 	pub async fn test_node_with_builder_signer()
-	-> eyre::Result<LocalNode<FlashBlocks, OptimismConsensusDriver>> {
-		FlashBlocks::test_node_with_cli_args(BuilderArgs {
+	-> eyre::Result<LocalNode<Flashblocks, OptimismConsensusDriver>> {
+		Flashblocks::test_node_with_cli_args(BuilderArgs {
 			builder_signer: Some(FundedAccounts::signer(0).into()),
 			..Default::default()
 		})
@@ -53,14 +53,14 @@ impl FlashBlocks {
 	///
 	/// Flashblocks tests have block times of 2s.
 	pub async fn test_node_with_flashblocks_on()
-	-> eyre::Result<(LocalNode<FlashBlocks, OptimismConsensusDriver>, SocketAddr)>
+	-> eyre::Result<(LocalNode<Flashblocks, OptimismConsensusDriver>, SocketAddr)>
 	{
 		let flashblocks_args = FlashblocksArgs::default_on_for_tests();
 
 		#[allow(clippy::missing_panics_doc)]
 		let ws_addr = flashblocks_args.ws_address().expect("default on");
 
-		let mut node = FlashBlocks::test_node_with_cli_args(BuilderArgs {
+		let mut node = Flashblocks::test_node_with_cli_args(BuilderArgs {
 			flashblocks_args,
 			..Default::default()
 		})
@@ -76,19 +76,19 @@ pub trait LocalNodeFlashblocksExt {
 	async fn while_next_block<F>(
 		&self,
 		work: F,
-	) -> eyre::Result<types::BlockResponse<FlashBlocks>>
+	) -> eyre::Result<types::BlockResponse<Flashblocks>>
 	where
 		F: Future<Output = eyre::Result<()>> + Send;
 }
 
 // async block building
 impl LocalNodeFlashblocksExt
-	for LocalNode<FlashBlocks, OptimismConsensusDriver>
+	for LocalNode<Flashblocks, OptimismConsensusDriver>
 {
 	async fn while_next_block<F>(
 		&self,
 		work: F,
-	) -> eyre::Result<types::BlockResponse<FlashBlocks>>
+	) -> eyre::Result<types::BlockResponse<Flashblocks>>
 	where
 		F: Future<Output = eyre::Result<()>> + Send,
 	{
@@ -132,7 +132,7 @@ impl LocalNodeFlashblocksExt
 	}
 }
 
-impl TestNodeFactory<FlashBlocks> for FlashBlocks {
+impl TestNodeFactory<Flashblocks> for Flashblocks {
 	type CliExtArgs = BuilderArgs;
 	type ConsensusDriver = OptimismConsensusDriver;
 
@@ -142,11 +142,11 @@ impl TestNodeFactory<FlashBlocks> for FlashBlocks {
 	///   interested in running arbitrary pipelines for this platform, instead we
 	///   construct the pipeline based on the CLI arguments.
 	async fn create_test_node_with_args(
-		_: Pipeline<FlashBlocks>,
+		_: Pipeline<Flashblocks>,
 		cli_args: Self::CliExtArgs,
-	) -> eyre::Result<LocalNode<FlashBlocks, Self::ConsensusDriver>> {
+	) -> eyre::Result<LocalNode<Flashblocks, Self::ConsensusDriver>> {
 		let chainspec = chainspec::OP_DEV.as_ref().clone().with_funded_accounts();
-		let pool = OrderPool::<FlashBlocks>::default();
+		let pool = OrderPool::<Flashblocks>::default();
 		let pipeline = build_pipeline(&cli_args, &pool)?;
 
 		LocalNode::new(OptimismConsensusDriver, chainspec, move |builder| {
@@ -162,7 +162,7 @@ impl TestNodeFactory<FlashBlocks> for FlashBlocks {
 						.payload(pipeline.into_service()),
 				)
 				.with_add_ons(opnode
-						.add_ons_builder::<types::RpcTypes<FlashBlocks>>()
+						.add_ons_builder::<types::RpcTypes<Flashblocks>>()
 						.build::<_, OpEngineValidatorBuilder, OpEngineApiBuilder<OpEngineValidatorBuilder>>())
 				.extend_rpc_modules(move |mut rpc_ctx| {
 					pool.attach_rpc(&mut rpc_ctx)?;

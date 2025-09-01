@@ -1,6 +1,6 @@
 use {
 	crate::{
-		FlashBlocks,
+		Flashblocks,
 		tests::{assert_has_sequencer_tx, random_valid_bundle},
 	},
 	rblib::{
@@ -14,12 +14,12 @@ use {
 
 #[tokio::test]
 async fn one_valid_tx_included() -> eyre::Result<()> {
-	let node = FlashBlocks::test_node().await?;
+	let node = Flashblocks::test_node().await?;
 
 	let bundle_with_one_tx = random_valid_bundle(1);
 	let bundle_hash = bundle_with_one_tx.hash();
 
-	let result = BundlesApiClient::<FlashBlocks>::send_bundle(
+	let result = BundlesApiClient::<Flashblocks>::send_bundle(
 		&node.rpc_client().await?,
 		bundle_with_one_tx,
 	)
@@ -40,12 +40,12 @@ async fn one_valid_tx_included() -> eyre::Result<()> {
 
 #[tokio::test]
 async fn two_valid_txs_included() -> eyre::Result<()> {
-	let node = FlashBlocks::test_node().await?;
+	let node = Flashblocks::test_node().await?;
 
 	let bundle_with_two_txs = random_valid_bundle(2);
 	let bundle_hash = bundle_with_two_txs.hash();
 
-	let result = BundlesApiClient::<FlashBlocks>::send_bundle(
+	let result = BundlesApiClient::<Flashblocks>::send_bundle(
 		&node.rpc_client().await?,
 		bundle_with_two_txs,
 	)
@@ -67,14 +67,14 @@ async fn two_valid_txs_included() -> eyre::Result<()> {
 
 #[tokio::test]
 async fn min_block_timestamp_constraint() -> eyre::Result<()> {
-	let node = FlashBlocks::test_node().await?;
+	let node = Flashblocks::test_node().await?;
 
 	let mut bundle_with_one_tx = random_valid_bundle(1);
 	bundle_with_one_tx.min_block_number = Some(3);
 	let bundle_hash = bundle_with_one_tx.hash();
 	let txhash = bundle_with_one_tx.transactions()[0].tx_hash();
 
-	let result = BundlesApiClient::<FlashBlocks>::send_bundle(
+	let result = BundlesApiClient::<Flashblocks>::send_bundle(
 		&node.rpc_client().await?,
 		bundle_with_one_tx,
 	)

@@ -753,7 +753,7 @@
           "refId": "A"
         }
       ],
-      "title": "Total FlashBlocks",
+      "title": "Total Flashblocks",
       "type": "stat"
     },
     {
@@ -2149,7 +2149,7 @@
       },
       "id": 20,
       "panels": [],
-      "title": "FlashBlocks Builder Pipeline (real-time)",
+      "title": "Flashblocks Builder Pipeline (real-time)",
       "type": "row"
     },
     {

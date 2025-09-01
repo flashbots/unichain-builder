@@ -10,7 +10,7 @@
 //!   building jobs.
 
 use {
-	crate::{FlashBlocks, primitives::*},
+	crate::{Flashblocks, primitives::*},
 	atomic_time::AtomicOptionInstant,
 	core::{
 		net::SocketAddr,
@@ -85,12 +85,12 @@ impl PublishFlashblock {
 	}
 }
 
-impl Step<FlashBlocks> for PublishFlashblock {
+impl Step<Flashblocks> for PublishFlashblock {
 	async fn step(
 		self: std::sync::Arc<Self>,
-		payload: Checkpoint<FlashBlocks>,
-		ctx: StepContext<FlashBlocks>,
-	) -> ControlFlow<FlashBlocks> {
+		payload: Checkpoint<Flashblocks>,
+		ctx: StepContext<Flashblocks>,
+	) -> ControlFlow<Flashblocks> {
 		let this_block_span = self.unpublished_payload(&payload);
 		let transactions: Vec<_> = this_block_span
 			.transactions()
@@ -148,7 +148,7 @@ impl Step<FlashBlocks> for PublishFlashblock {
 	/// we need to construct it and its content do not change throughout the job.
 	async fn before_job(
 		self: Arc<Self>,
-		ctx: StepContext<FlashBlocks>,
+		ctx: StepContext<Flashblocks>,
 	) -> Result<(), PayloadBuilderError> {
 		self.times.on_job_started(&self.metrics);
 
@@ -180,8 +180,8 @@ impl Step<FlashBlocks> for PublishFlashblock {
 	/// specific state.
 	async fn after_job(
 		self: Arc<Self>,
-		_: StepContext<FlashBlocks>,
-		_: Arc<Result<types::BuiltPayload<FlashBlocks>, PayloadBuilderError>>,
+		_: StepContext<Flashblocks>,
+		_: Arc<Result<types::BuiltPayload<Flashblocks>, PayloadBuilderError>>,
 	) -> Result<(), PayloadBuilderError> {
 		self.times.on_job_ended(&self.metrics);
 
@@ -197,7 +197,7 @@ impl Step<FlashBlocks> for PublishFlashblock {
 	/// - Configure metrics scope.
 	fn setup(
 		&mut self,
-		ctx: InitContext<FlashBlocks>,
+		ctx: InitContext<Flashblocks>,
 	) -> Result<(), PayloadBuilderError> {
 		self.metrics = Metrics::with_scope(ctx.metrics_scope());
 		Ok(())
@@ -215,8 +215,8 @@ impl PublishFlashblock {
 	/// those transactions as well.
 	fn unpublished_payload(
 		&self,
-		payload: &Checkpoint<FlashBlocks>,
-	) -> Span<FlashBlocks> {
+		payload: &Checkpoint<Flashblocks>,
+	) -> Span<Flashblocks> {
 		if self.block_number.load(Ordering::SeqCst) == 0 {
 			// first block, get all checkpoints, including sequencer txs
 			payload.history()
@@ -228,7 +228,7 @@ impl PublishFlashblock {
 
 	/// Called for each flashblock to capture metrics about the produced
 	/// flashblock contents.
-	fn capture_payload_metrics(&self, span: &Span<FlashBlocks>) {
+	fn capture_payload_metrics(&self, span: &Span<Flashblocks>) {
 		self.metrics.blocks_total.increment(1);
 		self.metrics.gas_per_block.record(span.gas_used() as f64);
 
@@ -388,7 +388,7 @@ impl WebSocketSink {
 	}
 
 	/// Watch for pipeline shutdown signals and stops the WebSocket publisher.
-	pub fn watch_shutdown(&self, pipeline: &Pipeline<FlashBlocks>) {
+	pub fn watch_shutdown(&self, pipeline: &Pipeline<Flashblocks>) {
 		let term = self.term.clone();
 		let mut dropped_signal = pipeline.subscribe::<PipelineDropped>();
 		tokio::spawn(async move {

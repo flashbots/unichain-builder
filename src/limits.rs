@@ -59,8 +59,8 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 		let gas_per_block = remaining_gas / remaining_blocks;
 		let next_block_gas_limit = gas_used.saturating_add(gas_per_block);
 
-		tracing::info!(
-			">--> payload txs: {}, gas used: {} ({}%), gas_remaining: {} ({}%), \
+		tracing::debug!(
+			"payload txs: {}, gas used: {} ({}%), gas_remaining: {} ({}%), \
 			 next_block_gas_limit: {} ({}%), gas per block: {} ({}%), remaining \
 			 blocks: {}, remaining time: {:?}",
 			payload.history().transactions().count(),

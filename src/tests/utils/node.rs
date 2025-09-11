@@ -1,9 +1,8 @@
 use {
 	crate::{
 		args::{BuilderArgs, FlashblocksArgs},
-		build_pipeline,
+		pipeline,
 		platform::Flashblocks,
-		rpc::TransactionStatusRpc,
 	},
 	core::{net::SocketAddr, time::Duration},
 	rblib::{
@@ -28,7 +27,12 @@ impl Flashblocks {
 	pub async fn test_node_with_cli_args(
 		cli_args: BuilderArgs,
 	) -> eyre::Result<LocalNode<Flashblocks, OptimismConsensusDriver>> {
-		Flashblocks::create_test_node_with_args(Pipeline::default(), cli_args).await
+		Flashblocks::create_test_node_with_args_and_pool(
+			Pipeline::default(),
+			cli_args,
+			Some(OrderPool::default()),
+		)
+		.await
 	}
 
 	pub async fn test_node()
@@ -141,17 +145,17 @@ impl TestNodeFactory<Flashblocks> for Flashblocks {
 	/// - Here we are ignoring the `pipeline` argument because we are not
 	///   interested in running arbitrary pipelines for this platform, instead we
 	///   construct the pipeline based on the CLI arguments.
-	async fn create_test_node_with_args(
+	async fn create_test_node_with_args_and_pool(
 		_: Pipeline<Flashblocks>,
 		cli_args: Self::CliExtArgs,
+		pool: Option<OrderPool<Flashblocks>>,
 	) -> eyre::Result<LocalNode<Flashblocks, Self::ConsensusDriver>> {
 		let chainspec = chainspec::OP_DEV.as_ref().clone().with_funded_accounts();
-		let pool = OrderPool::<Flashblocks>::default();
-		let pipeline = build_pipeline(&cli_args, &pool)?;
+		let pool = pool.expect("pool is always Some in our tests");
+		let pipeline = pipeline::build(&cli_args, &pool)?;
 
 		LocalNode::new(OptimismConsensusDriver, chainspec, move |builder| {
 			let opnode = OpNode::new(cli_args.rollup_args.clone());
-			let tx_status_rpc = TransactionStatusRpc::new(&pipeline);
 
 			builder
 				.with_types::<OpNode>()
@@ -166,7 +170,6 @@ impl TestNodeFactory<Flashblocks> for Flashblocks {
 						.build::<_, OpEngineValidatorBuilder, OpEngineApiBuilder<OpEngineValidatorBuilder>>())
 				.extend_rpc_modules(move |mut rpc_ctx| {
 					pool.attach_rpc(&mut rpc_ctx)?;
-					tx_status_rpc.attach_rpc(&mut rpc_ctx)?;
 					Ok(())
 				})
 		})

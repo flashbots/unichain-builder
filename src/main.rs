@@ -1,158 +1,41 @@
 use {
-	crate::{
-		args::{BuilderArgs, Cli, CliExt},
-		limits::FlashblockLimits,
-		publish::{PublishFlashblock, WebSocketSink},
-		rpc::TransactionStatusRpc,
-	},
-	core::num::NonZero,
+	crate::args::CliExt,
 	platform::Flashblocks,
-	rblib::{pool::*, prelude::*, reth, steps::*},
-	reth::optimism::node::{
-		OpEngineApiBuilder,
-		OpEngineValidatorBuilder,
-		OpNode,
+	rblib::{
+		pool::*,
+		reth::{node::builder::Node, optimism::node::OpNode},
 	},
-	std::sync::Arc,
 };
 
 mod args;
 mod bundle;
 mod limits;
+mod pipeline;
 mod platform;
 mod playground;
 mod primitives;
 mod publish;
-mod rpc;
 
 #[cfg(test)]
 mod tests;
 
-fn main() {
-	Cli::parsed()
-		.run(|builder, cli_args| async move {
-			let pool = OrderPool::<Flashblocks>::default();
-			let pipeline = build_pipeline(&cli_args, &pool)?;
-			let opnode = OpNode::new(cli_args.rollup_args.clone());
-			let tx_status_rpc = TransactionStatusRpc::new(&pipeline);
+fn main() -> eyre::Result<()> {
+	color_eyre::install()?;
 
-			#[expect(clippy::large_futures)]
-			let handle = builder
-				.with_types::<OpNode>()
-				.with_components(
-					opnode
-						.components()
-						.attach_pool(&pool)
-						.payload(pipeline.into_service()),
-				)
-				.with_add_ons(
-					opnode
-						.add_ons_builder::<types::RpcTypes<Flashblocks>>()
-						.build::<_, OpEngineValidatorBuilder, OpEngineApiBuilder<OpEngineValidatorBuilder>>(),
-				)
-				.extend_rpc_modules(move |mut rpc_ctx| {
-					pool.attach_rpc(&mut rpc_ctx)?;
-					tx_status_rpc.attach_rpc(&mut rpc_ctx)?;
-					Ok(())
-				})
-				.launch()
-				.await?;
+	args::Cli::parsed().run(|builder, cli_args| async move {
+		let pool = OrderPool::<Flashblocks>::default();
+		let pipeline = pipeline::build(&cli_args, &pool)?;
+		let opnode = OpNode::new(cli_args.rollup_args.clone());
 
-			handle.wait_for_node_exit().await
-		})
-		.unwrap();
-}
+		#[expect(clippy::large_futures)]
+		let handle = builder
+			.with_types::<OpNode>()
+			.with_components(opnode.components().payload(pipeline.into_service()))
+			.with_add_ons(opnode.add_ons())
+			.extend_rpc_modules(move |mut rpc_ctx| pool.attach_rpc(&mut rpc_ctx))
+			.launch()
+			.await?;
 
-fn build_pipeline(
-	cli_args: &BuilderArgs,
-	pool: &OrderPool<Flashblocks>,
-) -> eyre::Result<Pipeline<Flashblocks>> {
-	let mut pipeline = if cli_args.flashblocks_args.enabled() {
-		build_flashblocks_pipeline(cli_args, pool)?
-	} else {
-		build_classic_pipeline(cli_args, pool)
-	};
-
-	if let Some(ref signer) = cli_args.builder_signer {
-		let epilogue = BuilderEpilogue::with_signer(signer.clone().into());
-		let limiter = epilogue.limiter();
-		pipeline = pipeline.with_epilogue(epilogue).with_limits(limiter);
-	}
-
-	pool.attach_pipeline(&pipeline);
-
-	Ok(pipeline)
-}
-
-/// Classic block builder
-///
-/// Block building strategy that builds blocks using the classic approach by
-/// producing one block payload per CL payload job.
-fn build_classic_pipeline(
-	cli_args: &BuilderArgs,
-	pool: &OrderPool<Flashblocks>,
-) -> Pipeline<Flashblocks> {
-	if cli_args.revert_protection {
-		Pipeline::<Flashblocks>::named("classic")
-			.with_prologue(OptimismPrologue)
-			.with_pipeline(
-				Loop,
-				(
-					AppendOrders::from_pool(pool),
-					OrderByPriorityFee::default(),
-					RemoveRevertedTransactions::default(),
-				),
-			)
-	} else {
-		Pipeline::<Flashblocks>::named("classic")
-			.with_prologue(OptimismPrologue)
-			.with_pipeline(
-				Loop,
-				(AppendOrders::from_pool(pool), OrderByPriorityFee::default()),
-			)
-	}
-}
-
-fn build_flashblocks_pipeline(
-	cli_args: &BuilderArgs,
-	pool: &OrderPool<Flashblocks>,
-) -> eyre::Result<Pipeline<Flashblocks>> {
-	let socket_address = cli_args
-		.flashblocks_args
-		.ws_address()
-		.expect("WebSocket address must be set for Flashblocks");
-
-	// how often a flashblock is published
-	let interval = cli_args.flashblocks_args.interval;
-
-	// Flashblocks builder will always take as long as the payload job deadline,
-	// this value specifies how much buffer we want to give between flashblocks
-	// building and the payload job deadline that is given by the CL.
-	let total_building_time = Fraction(95, NonZero::new(100).unwrap());
-
-	let ws = Arc::new(WebSocketSink::new(socket_address)?);
-
-	let pipeline = Pipeline::<Flashblocks>::named("flashblocks")
-		.with_prologue(OptimismPrologue)
-		.with_pipeline(
-			Loop,
-			Pipeline::default()
-				.with_pipeline(
-					Loop,
-					(
-						AppendOrders::from_pool(pool).with_ok_on_limit(),
-						OrderByPriorityFee::default(),
-						RemoveRevertedTransactions::default(),
-						BreakAfterDeadline,
-					)
-						.with_epilogue(PublishFlashblock::to(&ws))
-						.with_limits(FlashblockLimits::with_interval(interval)),
-				)
-				.with_step(BreakAfterDeadline),
-		)
-		.with_limits(Scaled::default().deadline(total_building_time));
-
-	ws.watch_shutdown(&pipeline);
-
-	Ok(pipeline)
+		handle.wait_for_node_exit().await
+	})
 }

@@ -24,7 +24,7 @@
 //! configurations.
 
 use {
-	super::Cli,
+	crate::args::Cli,
 	clap::{CommandFactory, parser::ValueSource},
 	core::{
 		net::{IpAddr, Ipv4Addr, SocketAddr},

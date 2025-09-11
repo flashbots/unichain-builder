@@ -33,8 +33,8 @@ default = ["jemalloc"]
 jemalloc = ["rblib/jemalloc"]
 
 [dependencies]
-rblib = { git = "ssh://git@github.com/flashbots/rblib.git", tag = "v0.3.1" }
-
+#rblib = { git = "ssh://git@github.com/flashbots/rblib.git", tag = "v0.3.1" }
+rblib = { path = "../rblib" }
 
 futures = "0.3"
 tokio = "1.46"
@@ -55,6 +55,7 @@ derive_more = "2.0"
 shellexpand = "3.1"
 humantime = "2.2"
 atomic-time = "0.1"
+color-eyre = "0.6"
 
 secp256k1 = "0.30"
 jsonrpsee = "0.25.1"
@@ -70,9 +71,11 @@ reth-node-builder = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0
 reth-optimism-rpc = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
 
 [dev-dependencies]
-rblib = { git = "ssh://git@github.com/flashbots/rblib.git", tag = "v0.3.1", features = [
-  "test-utils",
-] }
+# rblib = { git = "ssh://git@github.com/flashbots/rblib.git", tag = "v0.3.1", features = [
+#   "test-utils",
+# ] }
+
+rblib = { path = "../rblib", features = ["test-utils"] }
 
 dashmap = "6.1"
 orx-concurrent-vec = "3.7.0"

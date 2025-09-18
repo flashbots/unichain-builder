@@ -23,6 +23,9 @@ use {
 pub struct FlashblockLimits {
 	/// The time interval between flashblocks within one payload job.
 	interval: Duration,
+	/// Time by which flashblocks will be delivered earlier to account for
+	/// latency. This time is absorbed by the first flashblock.
+	leeway_time: Duration,
 }
 
 impl ScopedLimits<Flashblocks> for FlashblockLimits {
@@ -59,10 +62,22 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 		let gas_per_block = remaining_gas / remaining_blocks;
 		let next_block_gas_limit = gas_used.saturating_add(gas_per_block);
 
+		// Calculate the deadline for the current flashblock.
+		// The first flashblock gets reduced time to absorb the leeway_time offset.
+		let is_first_block = payload.history().transactions().count() == 0;
+		let current_block_deadline = if is_first_block {
+			// First block absorbs the leeway time by having a shorter deadline.
+			self.interval.saturating_sub(self.leeway_time)
+		} else {
+			// Subsequent blocks get the normal interval.
+			self.interval
+		};
+
 		tracing::info!(
 			">--> payload txs: {}, gas used: {} ({}%), gas_remaining: {} ({}%), \
 			 next_block_gas_limit: {} ({}%), gas per block: {} ({}%), remaining \
-			 blocks: {}, remaining time: {:?}",
+			 blocks: {}, remaining time: {:?}, leeway: {:?}, \
+			 current_block_deadline: {:?}",
 			payload.history().transactions().count(),
 			gas_used,
 			(gas_used * 100 / enclosing.gas_limit),
@@ -73,17 +88,22 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 			gas_per_block,
 			(gas_per_block * 100 / enclosing.gas_limit),
 			remaining_blocks,
-			remaining_time
+			remaining_time,
+			self.leeway_time,
+			current_block_deadline
 		);
 
 		enclosing
-			.with_deadline(self.interval)
+			.with_deadline(current_block_deadline)
 			.with_gas_limit(next_block_gas_limit)
 	}
 }
 
 impl FlashblockLimits {
-	pub fn with_interval(interval: Duration) -> Self {
-		FlashblockLimits { interval }
+	pub fn new(interval: Duration, leeway_time: Duration) -> Self {
+		FlashblockLimits {
+			interval,
+			leeway_time,
+		}
 	}
 }

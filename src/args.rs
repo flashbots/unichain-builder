@@ -58,12 +58,23 @@ pub struct FlashblocksArgs {
 	/// Flashblocks block-time target
 	#[arg(
 		long = "flashblocks.interval",
-    name = "DURATION",
+    name = "INTERVAL_DURATION",
 		default_value = "250ms",
 		value_parser = humantime::parse_duration,
 		env = "FLASHBLOCKS_INTERVAL"
 	)]
 	pub interval: Duration,
+
+	/// Time by which flashblocks will be delivered earlier to account for
+	/// network latency. This time is absorbed by the first flashblock.
+	#[arg(
+		long = "flashblocks.leeway-time",
+		name = "LEEWAY_DURATION",
+		default_value = "50ms",
+		value_parser = humantime::parse_duration,
+		env = "FLASHBLOCKS_LEEWAY_TIME"
+	)]
+	pub leeway_time: Duration,
 
 	/// Enables flashblocks publishing on the specified WebSocket address.
 	/// If no address is specified defaults to 0.0.0.0:10111.
@@ -228,6 +239,7 @@ impl FlashblocksArgs {
 
 		Self {
 			interval: Duration::from_millis(250),
+			leeway_time: Duration::from_millis(50),
 			enabled: Some(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port).into()),
 		}
 	}

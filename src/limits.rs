@@ -29,7 +29,7 @@ pub struct FlashblockLimits {
 }
 
 impl ScopedLimits<Flashblocks> for FlashblockLimits {
-	/// Creates the payload limits for the first flashblock in a new payload job.
+	/// Creates the payload limits for the next flashblock in a new payload job.
 	fn create(
 		&self,
 		payload: &Checkpoint<Flashblocks>,

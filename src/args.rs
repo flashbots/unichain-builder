@@ -58,7 +58,7 @@ pub struct FlashblocksArgs {
 	/// Flashblocks block-time target
 	#[arg(
 		long = "flashblocks.interval",
-    name = "INTERVAL_DURATION",
+    name = "DURATION",
 		default_value = "250ms",
 		value_parser = humantime::parse_duration,
 		env = "FLASHBLOCKS_INTERVAL"
@@ -69,8 +69,8 @@ pub struct FlashblocksArgs {
 	/// network latency. This time is absorbed by the first flashblock.
 	#[arg(
 		long = "flashblocks.leeway-time",
-		name = "LEEWAY_DURATION",
-		default_value = "50ms",
+		name = "LEEWAY_TIME",
+		default_value = "75ms",
 		value_parser = humantime::parse_duration,
 		env = "FLASHBLOCKS_LEEWAY_TIME"
 	)]
@@ -239,7 +239,7 @@ impl FlashblocksArgs {
 
 		Self {
 			interval: Duration::from_millis(250),
-			leeway_time: Duration::from_millis(50),
+			leeway_time: Duration::from_millis(75),
 			enabled: Some(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port).into()),
 		}
 	}

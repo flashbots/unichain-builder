@@ -63,8 +63,16 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 		let gas_per_block = remaining_gas / remaining_blocks;
 		let next_block_gas_limit = gas_used.saturating_add(gas_per_block);
 
+		// For a large number of transactions, checking if one transaction is not a
+		// deposit is faster than checking if all transactions are deposits.
+		// If all transactions so far are DEPOSIT transactions, that means that
+		// there are no user transactions appended yet, which means that this is
+		// the first block.
+		let is_first_block = !payload.history().transactions().any(|tx| {
+			rblib::alloy::consensus::Typed2718::ty(tx)
+				!= rblib::alloy::optimism::consensus::DEPOSIT_TX_TYPE_ID
+		});
 		// Calculate the deadline for the current flashblock.
-		let is_first_block = payload.history().transactions().count() == 0;
 		let current_flashblock_deadline = if is_first_block {
 			// First block absorbs the leeway time by having a shorter deadline.
 			self.calculate_first_flashblock_deadline(payload)

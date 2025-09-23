@@ -8,6 +8,7 @@ use {
 	crate::Flashblocks,
 	core::time::Duration,
 	rblib::{alloy::consensus::BlockHeader, prelude::*},
+	std::ops::Rem,
 	tracing::{debug, error},
 };
 
@@ -124,7 +125,7 @@ impl FlashblockLimits {
         // FCU(a) could arrive with `fb_time < delay < block_time - fb_time` - in this case we will issue less flashblocks
 		let target_time = std::time::SystemTime::UNIX_EPOCH
 			+ Duration::from_secs(timestamp_to_build_block_by)
-			- self.leeway_time;
+				.saturating_sub(self.leeway_time);
 		let now = std::time::SystemTime::now();
 		let Ok(time_drift) = target_time.duration_since(now) else {
 			error!(
@@ -139,13 +140,15 @@ impl FlashblockLimits {
 		// This is extra check to ensure that we would account at least for block
 		// time in case we have any timer discrepancies.
 		let block_time = Duration::from_secs(
-			payload.block().timestamp()
-				- payload.block().parent().header().timestamp(),
+			payload
+				.block()
+				.timestamp()
+				.saturating_sub(payload.block().parent().header().timestamp()),
 		);
 		let time_drift = time_drift.min(block_time);
 		let interval_millis = self.interval.as_millis();
 		let time_drift = time_drift.as_millis();
-		let first_flashblock_offset = time_drift % interval_millis;
+		let first_flashblock_offset = time_drift.rem(interval_millis);
 		if first_flashblock_offset == 0 {
 			// We have perfect division, so we use interval as first fb offset
 			self.interval

@@ -1,9 +1,9 @@
-name: "[flashblocks] Release"
+name: "[unichain-builder] Release"
 
 on:
   push:
     tags:
-      - "flashblocks/v*"
+      - "unichain-builder/v*"
   workflow_dispatch:
     inputs:
       draft-release:
@@ -35,7 +35,7 @@ jobs:
         id: extract_version
         run: |
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            VERSION="${GITHUB_REF#refs/tags/flashblocks/}"
+            VERSION="${GITHUB_REF#refs/tags/unichain-builder/}"
           else
             VERSION="$(echo ${GITHUB_SHA} | cut -c1-7)"
           fi
@@ -92,19 +92,19 @@ jobs:
         run: |
           git config --global url."https://x-access-token:${GH_TOKEN}@github.com/flashbots/".insteadOf "https://github.com/flashbots/"
 
-      - name: Build flashblocks binary
+      - name: Build unichain-builder binary
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: "true" # so that cargo would use `git` cli
         run: |
           git config --global --add safe.directory "$(pwd)"
           . $HOME/.cargo/env
-          cargo build --release --features=${{ matrix.features }} --target ${{ matrix.configs.target }} --package flashblocks
+          cargo build --release --features=${{ matrix.features }} --target ${{ matrix.configs.target }} --package unichain-builder
 
-      - name: Upload flashblocks artifact
+      - name: Upload unichain-builder artifact
         uses: actions/upload-artifact@v4
         with:
-          name: flashblocks-${{ needs.extract-version.outputs.VERSION }}-${{ matrix.configs.target }}${{ matrix.features && '-' }}${{ matrix.features }}
-          path: target/${{ matrix.configs.target }}/release/flashblocks
+          name: unichain-builder-${{ needs.extract-version.outputs.VERSION }}-${{ matrix.configs.target }}${{ matrix.features && '-' }}${{ matrix.features }}
+          path: target/${{ matrix.configs.target }}/release/unichain-builder
 
   draft-release:
     name: Draft release
@@ -112,7 +112,7 @@ jobs:
     needs: [extract-version, build-binary]
     runs-on: warp-ubuntu-latest-x64-16x
     env:
-      VERSION: flashblocks/${{ needs.extract-version.outputs.VERSION }}
+      VERSION: unichain-builder/${{ needs.extract-version.outputs.VERSION }}
     permissions:
       contents: write
     steps:
@@ -128,9 +128,9 @@ jobs:
       - name: Record artifacts checksums
         working-directory: artifacts
         run: |
-          for dir in $( find . -type d -name "flashblocks-*" -printf "%f\n" ); do
+          for dir in $( find . -type d -name "unichain-builder-*" -printf "%f\n" ); do
             mv    ./$dir            ./$dir.bak
-            mv    ./$dir.bak/flashblocks ./$dir
+            mv    ./$dir.bak/unichain-builder ./$dir
             rm -r ./$dir.bak
           done
           find ./ || true

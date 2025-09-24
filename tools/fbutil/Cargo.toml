@@ -11,7 +11,7 @@ authors.workspace = true
 exclude.workspace = true
 
 [dependencies]
-flashblocks = { path = "../.." }
+unichain-builder = { path = "../.." }
 
 futures = "0.3"
 tokio = "1.46"

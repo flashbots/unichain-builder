@@ -11,13 +11,13 @@ license = "MIT"
 version = "1.0.0"
 edition = "2024"
 rust-version = "1.87"
-repository = "https://github.com/flashbots/flashblocks"
-homepage = "https://github.com/flashbots/flashblocks"
+repository = "https://github.com/flashbots/unichain-builder"
+homepage = "https://github.com/flashbots/unichain-builder"
 authors = ["Flashbots <info@flashbots.net>"]
 exclude = [".github/"]
 
 [package]
-name = "flashblocks"
+name = "unichain-builder"
 description = "Next-Gen Optimism L2 Block Builder"
 version.workspace = true
 edition.workspace = true

@@ -68,9 +68,9 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 		// If all transactions so far are DEPOSIT transactions, that means that
 		// there are no user transactions appended yet, which means that this is
 		// the first block.
-		let is_first_block = !payload.history().transactions().any(|tx| {
+		let is_first_block = !payload.history().transactions().all(|tx| {
 			rblib::alloy::consensus::Typed2718::ty(tx)
-				!= rblib::alloy::optimism::consensus::DEPOSIT_TX_TYPE_ID
+				== rblib::alloy::optimism::consensus::DEPOSIT_TX_TYPE_ID
 		});
 		// Calculate the deadline for the current flashblock.
 		let current_flashblock_deadline = if is_first_block {
@@ -126,14 +126,15 @@ impl FlashblockLimits {
 
 		// Logic below is originally from `op-rbuilder`: https://github.com/flashbots/op-rbuilder/blob/6267095f51bfe5c40da655f8faa40f360413c7f1/crates/op-rbuilder/src/builders/flashblocks/payload.rs#L817-L867
 		// We use this system time to determine remining time to build a block
-        // Things to consider:
-        // FCU(a) - FCU with attributes
-        // FCU(a) could arrive with `block_time - fb_time < delay`. In this case we could only produce 1 flashblock
-        // FCU(a) could arrive with `delay < fb_time` - in this case we will shrink first flashblock
-        // FCU(a) could arrive with `fb_time < delay < block_time - fb_time` - in this case we will issue less flashblocks
+		// Things to consider:
+		// FCU(a) - FCU with attributes
+		// FCU(a) could arrive with `block_time - fb_time < delay`. In this case we
+		// could only produce 1 flashblock FCU(a) could arrive with `delay <
+		// fb_time` - in this case we will shrink first flashblock FCU(a) could
+		// arrive with `fb_time < delay < block_time - fb_time` - in this case we
+		// will issue less flashblocks
 		let target_time = std::time::SystemTime::UNIX_EPOCH
-			+ Duration::from_secs(block_timestamp)
-				.saturating_sub(self.leeway_time);
+			+ Duration::from_secs(block_timestamp).saturating_sub(self.leeway_time);
 		let now = std::time::SystemTime::now();
 		let Ok(time_drift) = target_time.duration_since(now) else {
 			error!(

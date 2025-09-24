@@ -71,103 +71,59 @@ fn checkpoint_with_future_offset_secs(
 	block.start()
 }
 
-// This is used to create a payload attributes with a block timestamp of
-// `block_ts`.
-fn checkpoint_with_block_timestamp(block_ts: u64) -> Checkpoint<Flashblocks> {
-	let chainspec = chainspec::OP_DEV.as_ref().clone().with_funded_accounts();
-	let provider =
-		GenesisProviderFactory::<Flashblocks>::new(chainspec.clone().into());
-
-	let parent = rblib::reth::primitives::SealedHeader::new(
-		chainspec.genesis_header().clone(),
-		chainspec.genesis_hash(),
-	);
-
-	let payload_attributes =
-		OpPayloadBuilderAttributes::<types::Transaction<Flashblocks>> {
-			payload_attributes: EthPayloadBuilderAttributes::new(
-				parent.hash(),
-				rblib::reth::ethereum::node::engine::EthPayloadAttributes {
-					timestamp: block_ts,
-					prev_randao: B256::random(),
-					suggested_fee_recipient: Address::random(),
-					withdrawals: Some(vec![]),
-					parent_beacon_block_root: Some(B256::ZERO),
-				},
-			),
-			transactions: vec![],
-			gas_limit: Some(BASE_MAINNET_MAX_GAS_LIMIT),
-			..Default::default()
-		};
-
-	let block = BlockContext::<Flashblocks>::new(
-		parent,
-		payload_attributes,
-		provider.state_provider(),
-		chainspec.into(),
-	)
-	.expect("block context");
-
-	block.start()
-}
-
 #[test]
-fn first_deadline_when_target_in_past_returns_full_interval() {
-	// This test forces the target_time to be in the past, so
-	// target_time.duration_since(now) fail. This means
-	// calculate_first_flashblock_deadline is expected to return the full
-	// interval.
-
-	let interval = Duration::from_millis(750);
-	let leeway = Duration::from_secs(10);
-	let limits = FlashblockLimits::new(interval, leeway);
-
-	let now_secs = SystemTime::now()
-		.duration_since(UNIX_EPOCH)
-		.expect("time")
-		.as_secs();
-	// Set block timestamp to 1s before now; with 10s leeway, target_time < now
-	let block_ts = now_secs.saturating_sub(1);
-	let checkpoint = checkpoint_with_block_timestamp(block_ts);
-	let (_num_flashblocks, first_flashblock_interval) =
-		limits.calculate_flashblocks(&checkpoint);
-	assert_eq!(first_flashblock_interval, interval);
-}
-
-#[test]
-fn first_deadline_leeway_0_time_drift_2000ms_interval_250ms() {
-	// With leeway = 0ms and target = now + 2000ms, then time_drift should be
+fn leeway_0ms_remaining_time_2000ms_interval_250ms() {
+	// With leeway = 0ms and target = now + 2000ms, then remaining_time should be
 	// around 2000ms. 2000 % 250 = 0, so we expect ~250ms (flashblock interval)
 	// for the first flashblock interval.
 	let interval = Duration::from_millis(250);
 	let leeway = Duration::from_millis(0);
 	let limits = FlashblockLimits::new(interval, leeway);
 	let checkpoint = checkpoint_with_future_offset_secs(2);
+	let payload_deadline = Duration::from_millis(2000);
 
-	let (_num_flashblocks, first_flashblock_interval) =
-		limits.calculate_flashblocks(&checkpoint);
+	let (num_flashblocks, first_flashblock_interval) =
+		limits.calculate_flashblocks(&checkpoint, payload_deadline);
 	assert_eq!(first_flashblock_interval, interval);
+	// The number of flashblocks should be 8
+	assert_eq!(num_flashblocks, 8);
 }
 
 #[test]
-fn first_deadline_leeway_75ms_time_drift_1925ms_interval_250ms() {
-	// With leeway = 75ms and target = now + 2000ms, then time_drift should be
-	// around 1925ms. 1925 % 250 = 175, so we expect a reduced ~175ms for the
-	// first flashblock interval. Due to relying on SystemTime::now(), the result
-	// is not deterministic and has the potential to be flaky.
+fn leeway_75ms_remaining_time_1925ms_interval_250ms() {
+	// With leeway = 75ms and target = now + 2000ms, then remaining_time should be
+	// around 1925ms. 1925 % 250 = 175, so we expect a reduced 175ms for the
+	// first flashblock interval.
 	let interval = Duration::from_millis(250);
 	let leeway = Duration::from_millis(75);
 	let limits = FlashblockLimits::new(interval, leeway);
 	// Use a large block_time so it doesn't cap the time_drift calculation
 	let checkpoint = checkpoint_with_future_offset_secs(2);
+	let payload_deadline = Duration::from_millis(2000);
 
-	let (_num_flashblocks, first_flashblock_interval) =
-		limits.calculate_flashblocks(&checkpoint);
+	let (num_flashblocks, first_flashblock_interval) =
+		limits.calculate_flashblocks(&checkpoint, payload_deadline);
 
-	// The result should be in the valid range (0, interval), which is strictly
-	// less than 250ms
-	assert!(
-		first_flashblock_interval > Duration::from_millis(0)
-			&& first_flashblock_interval < interval
-	);
+	// The first flashblock interval should be 175ms
+	assert_eq!(first_flashblock_interval, Duration::from_millis(175));
+	// The number of flashblocks should be 8
+	assert_eq!(num_flashblocks, 8);
+}
+
+#[test]
+fn leeway_75ms_remaining_time_1925ms_interval_750ms() {
+	// remaining time is 2000ms - 75ms = 1925ms.
+	// first flashblock interval is 425ms, followed by two flashblocks of 750ms
+	// intervals.
+	let interval = Duration::from_millis(750);
+	let leeway = Duration::from_millis(75);
+	let limits = FlashblockLimits::new(interval, leeway);
+	let payload_deadline = Duration::from_millis(2000);
+
+	let checkpoint = checkpoint_with_future_offset_secs(2);
+	let (num_flashblocks, first_flashblock_interval) =
+		limits.calculate_flashblocks(&checkpoint, payload_deadline);
+
+	assert_eq!(first_flashblock_interval, Duration::from_millis(425));
+	assert_eq!(num_flashblocks, 3);
 }

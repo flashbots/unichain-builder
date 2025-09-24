@@ -9,7 +9,7 @@ use {
 	core::time::Duration,
 	rblib::{alloy::consensus::BlockHeader, prelude::*},
 	std::ops::{Div, Rem},
-	tracing::{debug, error},
+	tracing::debug,
 };
 
 /// Specifies the limits for individual flashblocks.
@@ -56,7 +56,7 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 		// current flashblock.
 		let (remaining_blocks, current_flashblock_interval) = if is_first_block {
 			// First block absorbs the leeway time by having a shorter deadline.
-			self.calculate_flashblocks(payload)
+			self.calculate_flashblocks(payload, remaining_time)
 		} else {
 			// Subsequent blocks get the normal interval.
 			#[allow(clippy::cast_possible_truncation)]
@@ -123,57 +123,28 @@ impl FlashblockLimits {
 	pub fn calculate_flashblocks(
 		&self,
 		payload: &Checkpoint<Flashblocks>,
+		remaining_time: Duration,
 	) -> (u64, Duration) {
-		// Get the timestamp of the block (not flashblock) we're building
-		let block_timestamp = payload.block().timestamp();
 		let block_time = Duration::from_secs(
 			payload
 				.block()
 				.timestamp()
 				.saturating_sub(payload.block().parent().header().timestamp()),
 		);
-
-		// Logic below is originally from `op-rbuilder`: https://github.com/flashbots/op-rbuilder/blob/6267095f51bfe5c40da655f8faa40f360413c7f1/crates/op-rbuilder/src/builders/flashblocks/payload.rs#L817-L867
-		// We use this system time to determine remining time to build a block
-		// Things to consider:
-		// FCU(a) - FCU with attributes
-		// FCU(a) could arrive with `block_time - fb_time < delay`.
-		// - In this case we could only produce 1 flashblock
-		// FCU(a) could arrive with `delay < fb_time`
-		// - in this case we will shrink first flashblock
-		// FCU(a) could arrive with `fb_time < delay < block_time - fb_time`
-		// - in this case we will issue less flashblocks
-		let target_time = std::time::SystemTime::UNIX_EPOCH
-			+ Duration::from_secs(block_timestamp).saturating_sub(self.leeway_time);
-		let now = std::time::SystemTime::now();
-		let Ok(time_drift) = target_time.duration_since(now) else {
-			error!(
-				target: "flashblocks_pipeline",
-				message = "FCU arrived too late or system clock are unsynced",
-				?target_time,
-				?now,
-			);
-			#[allow(clippy::cast_possible_truncation)]
-			return (
-				(block_time.as_millis() / self.interval.as_millis()) as u64,
-				self.interval,
-			);
-		};
-
-		// This is extra check to ensure that we would account at least for block
-		// time in case we have any timer discrepancies.
-		let time_drift = time_drift.min(block_time);
-		// Note: this u64 truncation is originally from op-rbuilder payload.rs
+		let remaining_time = remaining_time
+			.min(block_time)
+			.saturating_sub(self.leeway_time);
 		let interval_millis = self.interval.as_millis() as u64;
-		let time_drift = time_drift.as_millis() as u64;
-		let first_flashblock_offset = time_drift.rem(interval_millis);
+		let remaining_time_millis = remaining_time.as_millis() as u64;
+		let first_flashblock_offset = remaining_time_millis.rem(interval_millis);
+
 		if first_flashblock_offset == 0 {
 			// We have perfect division, so we use interval as first fb offset
-			(time_drift.div(interval_millis), self.interval)
+			(remaining_time_millis.div(interval_millis), self.interval)
 		} else {
-			// Non-perfect division, so we account for it.
+			// Non-perfect division, so we account for the shortened flashblock.
 			(
-				time_drift.div(interval_millis) + 1,
+				remaining_time_millis.div(interval_millis) + 1,
 				Duration::from_millis(first_flashblock_offset),
 			)
 		}

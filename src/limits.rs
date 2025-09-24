@@ -8,7 +8,7 @@ use {
 	crate::Flashblocks,
 	core::time::Duration,
 	rblib::{alloy::consensus::BlockHeader, prelude::*},
-	std::ops::Rem,
+	std::ops::{Div, Rem},
 	tracing::{debug, error},
 };
 
@@ -42,9 +42,28 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 		let remaining_time =
 			payload_deadline.saturating_sub(payload.building_since().elapsed());
 
-		#[allow(clippy::cast_possible_truncation)]
-		let remaining_blocks =
-			(remaining_time.as_millis() / self.interval.as_millis()) as u64;
+		// For a large number of transactions, checking if one transaction is not a
+		// deposit is faster than checking if all transactions are deposits.
+		// If all transactions so far are DEPOSIT transactions, that means that
+		// there are no user transactions appended yet, which means that this is
+		// the first block.
+		let is_first_block = !payload.history().transactions().all(|tx| {
+			rblib::alloy::consensus::Typed2718::ty(tx)
+				== rblib::alloy::optimism::consensus::DEPOSIT_TX_TYPE_ID
+		});
+
+		// Calculate the number of remaining flashblocks, and the interval for the
+		// current flashblock.
+		let (remaining_blocks, current_flashblock_interval) = if is_first_block {
+			// First block absorbs the leeway time by having a shorter deadline.
+			self.calculate_flashblocks(payload)
+		} else {
+			// Subsequent blocks get the normal interval.
+			#[allow(clippy::cast_possible_truncation)]
+			let remaining_blocks =
+				(remaining_time.as_millis() / self.interval.as_millis()) as u64;
+			(remaining_blocks, self.interval)
+		};
 
 		if remaining_blocks <= 1 {
 			// we don't have enough time for more than one block
@@ -63,29 +82,11 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 		let gas_per_block = remaining_gas / remaining_blocks;
 		let next_block_gas_limit = gas_used.saturating_add(gas_per_block);
 
-		// For a large number of transactions, checking if one transaction is not a
-		// deposit is faster than checking if all transactions are deposits.
-		// If all transactions so far are DEPOSIT transactions, that means that
-		// there are no user transactions appended yet, which means that this is
-		// the first block.
-		let is_first_block = !payload.history().transactions().all(|tx| {
-			rblib::alloy::consensus::Typed2718::ty(tx)
-				== rblib::alloy::optimism::consensus::DEPOSIT_TX_TYPE_ID
-		});
-		// Calculate the deadline for the current flashblock.
-		let current_flashblock_deadline = if is_first_block {
-			// First block absorbs the leeway time by having a shorter deadline.
-			self.calculate_first_flashblock_deadline(payload)
-		} else {
-			// Subsequent blocks get the normal interval.
-			self.interval
-		};
-
 		tracing::info!(
 			">--> payload txs: {}, gas used: {} ({}%), gas_remaining: {} ({}%), \
 			 next_block_gas_limit: {} ({}%), gas per block: {} ({}%), remaining \
 			 blocks: {}, remaining time: {:?}, leeway: {:?}, \
-			 current_flashblock_deadline: {:?}",
+			 current_flashblock_interval: {:?}",
 			payload.history().transactions().count(),
 			gas_used,
 			(gas_used * 100 / enclosing.gas_limit),
@@ -98,11 +99,11 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 			remaining_blocks,
 			remaining_time,
 			self.leeway_time,
-			current_flashblock_deadline
+			current_flashblock_interval
 		);
 
 		enclosing
-			.with_deadline(current_flashblock_deadline)
+			.with_deadline(current_flashblock_interval)
 			.with_gas_limit(next_block_gas_limit)
 	}
 }
@@ -115,24 +116,33 @@ impl FlashblockLimits {
 		}
 	}
 
-	// This calculates the deadline for the first flashblock in a payload job.
-	// The first flashblock gets reduced time to absorb the leeway_time offset.
-	pub fn calculate_first_flashblock_deadline(
+	// This calculates the number of flashblocks in a payload job, and the
+	// interval for the first flashblock. if leeway_time is non-zero, the first
+	// flashblock gets additional reduction in time to absorb the leeway_time
+	// offset.
+	pub fn calculate_flashblocks(
 		&self,
 		payload: &Checkpoint<Flashblocks>,
-	) -> Duration {
+	) -> (u64, Duration) {
 		// Get the timestamp of the block (not flashblock) we're building
 		let block_timestamp = payload.block().timestamp();
+		let block_time = Duration::from_secs(
+			payload
+				.block()
+				.timestamp()
+				.saturating_sub(payload.block().parent().header().timestamp()),
+		);
 
 		// Logic below is originally from `op-rbuilder`: https://github.com/flashbots/op-rbuilder/blob/6267095f51bfe5c40da655f8faa40f360413c7f1/crates/op-rbuilder/src/builders/flashblocks/payload.rs#L817-L867
 		// We use this system time to determine remining time to build a block
 		// Things to consider:
 		// FCU(a) - FCU with attributes
-		// FCU(a) could arrive with `block_time - fb_time < delay`. In this case we
-		// could only produce 1 flashblock FCU(a) could arrive with `delay <
-		// fb_time` - in this case we will shrink first flashblock FCU(a) could
-		// arrive with `fb_time < delay < block_time - fb_time` - in this case we
-		// will issue less flashblocks
+		// FCU(a) could arrive with `block_time - fb_time < delay`.
+		// - In this case we could only produce 1 flashblock
+		// FCU(a) could arrive with `delay < fb_time`
+		// - in this case we will shrink first flashblock
+		// FCU(a) could arrive with `fb_time < delay < block_time - fb_time`
+		// - in this case we will issue less flashblocks
 		let target_time = std::time::SystemTime::UNIX_EPOCH
 			+ Duration::from_secs(block_timestamp).saturating_sub(self.leeway_time);
 		let now = std::time::SystemTime::now();
@@ -143,28 +153,29 @@ impl FlashblockLimits {
 				?target_time,
 				?now,
 			);
-			return self.interval;
+			#[allow(clippy::cast_possible_truncation)]
+			return (
+				(block_time.as_millis() / self.interval.as_millis()) as u64,
+				self.interval,
+			);
 		};
 
 		// This is extra check to ensure that we would account at least for block
 		// time in case we have any timer discrepancies.
-		let block_time = Duration::from_secs(
-			payload
-				.block()
-				.timestamp()
-				.saturating_sub(payload.block().parent().header().timestamp()),
-		);
 		let time_drift = time_drift.min(block_time);
-		let interval_millis = self.interval.as_millis();
-		let time_drift = time_drift.as_millis();
+		// Note: this u64 truncation is originally from op-rbuilder payload.rs
+		let interval_millis = self.interval.as_millis() as u64;
+		let time_drift = time_drift.as_millis() as u64;
 		let first_flashblock_offset = time_drift.rem(interval_millis);
 		if first_flashblock_offset == 0 {
 			// We have perfect division, so we use interval as first fb offset
-			self.interval
+			(time_drift.div(interval_millis), self.interval)
 		} else {
 			// Non-perfect division, so we account for it.
-			#[allow(clippy::cast_possible_truncation)]
-			Duration::from_millis(first_flashblock_offset as u64)
+			(
+				time_drift.div(interval_millis) + 1,
+				Duration::from_millis(first_flashblock_offset),
+			)
 		}
 	}
 }

@@ -129,8 +129,9 @@ fn first_deadline_when_target_in_past_returns_full_interval() {
 	// Set block timestamp to 1s before now; with 10s leeway, target_time < now
 	let block_ts = now_secs.saturating_sub(1);
 	let checkpoint = checkpoint_with_block_timestamp(block_ts);
-	let d = limits.calculate_first_flashblock_deadline(&checkpoint);
-	assert_eq!(d, interval);
+	let (_num_flashblocks, first_flashblock_interval) =
+		limits.calculate_flashblocks(&checkpoint);
+	assert_eq!(first_flashblock_interval, interval);
 }
 
 #[test]
@@ -143,8 +144,9 @@ fn first_deadline_leeway_0_time_drift_2000ms_interval_250ms() {
 	let limits = FlashblockLimits::new(interval, leeway);
 	let checkpoint = checkpoint_with_future_offset_secs(2);
 
-	let actual = limits.calculate_first_flashblock_deadline(&checkpoint);
-	assert_eq!(actual, interval);
+	let (_num_flashblocks, first_flashblock_interval) =
+		limits.calculate_flashblocks(&checkpoint);
+	assert_eq!(first_flashblock_interval, interval);
 }
 
 #[test]
@@ -159,9 +161,13 @@ fn first_deadline_leeway_75ms_time_drift_1925ms_interval_250ms() {
 	// Use a large block_time so it doesn't cap the time_drift calculation
 	let checkpoint = checkpoint_with_future_offset_secs(2);
 
-	let actual = limits.calculate_first_flashblock_deadline(&checkpoint);
+	let (_num_flashblocks, first_flashblock_interval) =
+		limits.calculate_flashblocks(&checkpoint);
 
 	// The result should be in the valid range (0, interval), which is strictly
 	// less than 250ms
-	assert!(actual > Duration::from_millis(0) && actual < interval);
+	assert!(
+		first_flashblock_interval > Duration::from_millis(0)
+			&& first_flashblock_interval < interval
+	);
 }

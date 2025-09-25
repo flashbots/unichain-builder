@@ -97,11 +97,6 @@ impl Step<Flashblocks> for PublishFlashblock {
 			.map(|tx| tx.encoded_2718().into())
 			.collect();
 
-		if transactions.is_empty() {
-			// nothing to publish, empty flashblocks are not interesting, skip.
-			return ControlFlow::Ok(payload);
-		}
-
 		// increment flashblock number
 		let index = self.block_number.fetch_add(1, Ordering::SeqCst);
 

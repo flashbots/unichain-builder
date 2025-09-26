@@ -43,6 +43,7 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 			(remaining_time.as_millis() / self.interval.as_millis()) as u64;
 
 		if remaining_blocks <= 1 {
+			tracing::info!("remaining_blocks <= 1");
 			// we don't have enough time for more than one block
 			// saturate the payload gas within the remaining time
 			return enclosing.with_deadline(remaining_time);
@@ -52,7 +53,7 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 		let remaining_gas = enclosing.gas_limit.saturating_sub(gas_used);
 
 		if remaining_gas == 0 {
-			debug!("No remaining gas for flashblocks, but still have time left");
+			tracing::info!("No remaining gas for flashblocks, but still have time left");
 			return enclosing.with_deadline(remaining_time);
 		}
 

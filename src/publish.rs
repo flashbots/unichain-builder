@@ -140,7 +140,7 @@ impl Step<Flashblocks> for PublishFlashblock {
 		// Place a barrier after each published flashblock to freeze the contents
 		// of the payload up to this point, since this becomes a publicly committed
 		// state.
-		ControlFlow::Ok(payload.barrier())
+		ControlFlow::Ok(payload.named_barrier("flashblock"))
 	}
 
 	/// Before the payload job starts prepare the contents of the

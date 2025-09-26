@@ -42,15 +42,7 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 		let remaining_time =
 			payload_deadline.saturating_sub(payload.building_since().elapsed());
 
-		// For a large number of transactions, checking if one transaction is not a
-		// deposit is faster than checking if all transactions are deposits.
-		// If all transactions so far are DEPOSIT transactions, that means that
-		// there are no user transactions appended yet, which means that this is
-		// the first block.
-		let is_first_block = !payload.history().transactions().all(|tx| {
-			rblib::alloy::consensus::Typed2718::ty(tx)
-				== rblib::alloy::optimism::consensus::DEPOSIT_TX_TYPE_ID
-		});
+		let is_first_block = self.is_first_block(payload);
 
 		// Calculate the number of remaining flashblocks, and the interval for the
 		// current flashblock.
@@ -148,5 +140,17 @@ impl FlashblockLimits {
 				Duration::from_millis(first_flashblock_offset),
 			)
 		}
+	}
+
+	/// Determines if this is the first block in a payload job, by checking if
+	/// there are any flashblock barriers. If no flashblock barriers exist, this
+	/// is considered the first block.
+	pub fn is_first_block(&self, payload: &Checkpoint<Flashblocks>) -> bool {
+		payload
+			.history()
+			.iter()
+			.filter(|c| c.is_named_barrier("flashblock"))
+			.count()
+			== 0
 	}
 }

@@ -58,7 +58,7 @@ pub struct FlashblocksArgs {
 	/// Flashblocks block-time target
 	#[arg(
 		long = "flashblocks.interval",
-    name = "DURATION",
+    	name = "DURATION",
 		default_value = "250ms",
 		value_parser = humantime::parse_duration,
 		env = "FLASHBLOCKS_INTERVAL"
@@ -80,12 +80,20 @@ pub struct FlashblocksArgs {
 	/// If no address is specified defaults to 0.0.0.0:10111.
 	#[arg(
 		long = "flashblocks",
-    name = "WS_ADDRESS",
+    	name = "WS_ADDRESS",
 		env = "FLASHBLOCKS_WS_ADDRESS",
-    num_args = 0..=1,
+    	num_args = 0..=1,
 		default_missing_value = "0.0.0.0:10111"
 	)]
 	enabled: Option<SocketAddr>,
+
+	/// Should we calculate the state root for each flashblock
+    #[arg(
+        long = "flashblocks.calculate-state-root",
+        default_value = "true",
+        env = "FLASHBLOCKS_CALCULATE_STATE_ROOT"
+    )]
+    pub calculate_state_root: bool,
 }
 
 impl Default for BuilderArgs {
@@ -241,6 +249,7 @@ impl FlashblocksArgs {
 			interval: Duration::from_millis(250),
 			leeway_time: Duration::from_millis(75),
 			enabled: Some(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port).into()),
+    		calculate_state_root: true,
 		}
 	}
 
@@ -282,6 +291,7 @@ impl FlashblocksArgs {
 			interval,
 			leeway_time,
 			enabled: Some(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port).into()),
+			calculate_state_root: true,
 		}
 	}
 }

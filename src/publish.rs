@@ -36,8 +36,7 @@ use {
 		},
 	},
 	tokio_tungstenite::{
-		WebSocketStream,
-		accept_async,
+		WebSocketStream, accept_async,
 		tungstenite::{Message, Utf8Bytes},
 	},
 	tracing::{debug, trace},
@@ -71,16 +70,20 @@ pub struct PublishFlashblock {
 	/// Timestamps for various stages of the flashblock publishing process. This
 	/// information is used to produce some of the metrics.
 	times: Times,
+
+	/// Should we calculate the state root for each flashblock
+	pub calculate_state_root: bool,
 }
 
 impl PublishFlashblock {
-	pub fn to(sink: &Arc<WebSocketSink>) -> Self {
+	pub fn new(sink: &Arc<WebSocketSink>, calculate_state_root: bool) -> Self {
 		Self {
 			sink: Arc::clone(sink),
 			block_number: AtomicU64::default(),
 			block_base: RwLock::new(None),
 			metrics: Metrics::default(),
 			times: Times::default(),
+			calculate_state_root,
 		}
 	}
 }
@@ -102,8 +105,8 @@ impl Step<Flashblocks> for PublishFlashblock {
 
 		let base = self.block_base.read().clone();
 		let diff = ExecutionPayloadFlashblockDeltaV1 {
-			state_root: B256::ZERO,       // TODO: compute state root
-			receipts_root: B256::ZERO,    // TODO: compute receipts root
+			state_root: self.compute_state_root(&payload, &ctx),
+			receipts_root: B256::ZERO, // TODO: compute receipts root
 			logs_bloom: Bloom::default(), // TODO
 			gas_used: payload.cumulative_gas_used(),
 			block_hash: B256::ZERO, // TODO: compute block hash
@@ -221,6 +224,37 @@ impl PublishFlashblock {
 		}
 	}
 
+	fn compute_state_root(
+		&self,
+		payload: &Checkpoint<Flashblocks>,
+		ctx: &StepContext<Flashblocks>,
+	) -> B256 {
+		if !self.calculate_state_root {
+			return B256::ZERO;
+		}
+
+		let state_root_start_time = Instant::now();
+
+		let state_provider = ctx.block().base_state();
+		let hashed_state =
+			state_provider.hashed_post_state(payload.state().unwrap());
+		let (state_root, _trie_output) = state_provider
+			.state_root_with_updates(hashed_state)
+			.unwrap();
+
+		let state_root_calculation_time = state_root_start_time.elapsed();
+		self
+			.metrics
+			.state_root_calculation_duration
+			.record(state_root_calculation_time);
+		self
+			.metrics
+			.state_root_calculation_gauge
+			.set(state_root_calculation_time);
+
+		state_root
+	}
+
 	/// Called for each flashblock to capture metrics about the produced
 	/// flashblock contents.
 	fn capture_payload_metrics(&self, span: &Span<Flashblocks>) {
@@ -284,6 +318,12 @@ struct Metrics {
 
 	/// The number of failures on the websocket transport layer.
 	pub websocket_publish_errors_total: Counter,
+
+	/// Histogram of state root calculation duration
+	pub state_root_calculation_duration: Histogram,
+
+	/// Latest state root calculation duration
+	pub state_root_calculation_gauge: Gauge,
 }
 
 /// Used to track timing information for metrics.

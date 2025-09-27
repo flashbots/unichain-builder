@@ -7,11 +7,7 @@ use {
 	},
 	platform::Flashblocks,
 	rblib::{pool::*, prelude::*, steps::*},
-	reth_optimism_node::{
-		OpEngineApiBuilder,
-		OpEngineValidatorBuilder,
-		OpNode,
-	},
+	reth_optimism_node::{OpEngineApiBuilder, OpEngineValidatorBuilder, OpNode},
 	std::sync::Arc,
 };
 
@@ -147,7 +143,10 @@ fn build_flashblocks_pipeline(
 						RemoveRevertedTransactions::default(),
 						BreakAfterDeadline,
 					)
-						.with_epilogue(PublishFlashblock::to(&ws))
+						.with_epilogue(PublishFlashblock::new(
+							&ws,
+							cli_args.flashblocks_args.calculate_state_root,
+						))
 						.with_limits(FlashblockLimits::new(interval, leeway_time)),
 				)
 				.with_step(BreakAfterDeadline),

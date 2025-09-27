@@ -5,10 +5,9 @@ use {
 		publish::{PublishFlashblock, WebSocketSink},
 		rpc::TransactionStatusRpc,
 	},
-	core::num::NonZero,
 	platform::Flashblocks,
-	rblib::{pool::*, prelude::*, reth, steps::*},
-	reth::optimism::node::{
+	rblib::{pool::*, prelude::*, steps::*},
+	reth_optimism_node::{
 		OpEngineApiBuilder,
 		OpEngineValidatorBuilder,
 		OpNode,

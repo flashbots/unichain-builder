@@ -42,7 +42,7 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 		let remaining_time =
 			payload_deadline.saturating_sub(payload.building_since().elapsed());
 
-		let is_first_block = self.is_first_block(payload);
+		let is_first_block = Self::is_first_block(payload);
 
 		// Calculate the number of remaining flashblocks, and the interval for the
 		// current flashblock.
@@ -123,10 +123,9 @@ impl FlashblockLimits {
 				.timestamp()
 				.saturating_sub(payload.block().parent().header().timestamp()),
 		);
-		let remaining_time = remaining_time
-			.min(block_time);
-		let interval_millis = self.interval.as_millis() as u64;
-		let remaining_time_millis = remaining_time.as_millis() as u64;
+		let remaining_time = remaining_time.min(block_time);
+		let interval_millis = u64::try_from(self.interval.as_millis()).unwrap();
+		let remaining_time_millis = u64::try_from(remaining_time.as_millis()).unwrap();
 		let first_flashblock_offset = remaining_time_millis.rem(interval_millis);
 
 		if first_flashblock_offset == 0 {
@@ -144,7 +143,7 @@ impl FlashblockLimits {
 	/// Determines if this is the first block in a payload job, by checking if
 	/// there are any flashblock barriers. If no flashblock barriers exist, this
 	/// is considered the first block.
-	pub fn is_first_block(&self, payload: &Checkpoint<Flashblocks>) -> bool {
+	pub fn is_first_block(payload: &Checkpoint<Flashblocks>) -> bool {
 		payload
 			.history()
 			.iter()

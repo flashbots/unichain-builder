@@ -52,8 +52,13 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 		} else {
 			// Subsequent blocks get the normal interval.
 			#[allow(clippy::cast_possible_truncation)]
-			let remaining_blocks =
-				(remaining_time.as_millis() / self.interval.as_millis()) as u64;
+			let remaining_blocks = if remaining_time.is_zero() {
+				0
+			} else {
+				// Because remaining_time may be slightly less than the interval (ex. 249ms when interval is 250ms),
+				// then it will inacurately result in 0 remaining blocks due to truncation. So unless remaining_time is 0, we can fit 1 more flashblock.
+				((remaining_time.as_millis() / self.interval.as_millis()) as u64).max(1)
+			};
 			(remaining_blocks, self.interval)
 		};
 

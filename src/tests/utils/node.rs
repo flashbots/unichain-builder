@@ -70,6 +70,29 @@ impl Flashblocks {
 
 		Ok((node, ws_addr))
 	}
+
+	// The same as test_node_with_flashblocks_on, but with a custom leeway time
+	pub async fn test_node_with_flashblocks_on_and_custom_leeway_time_and_interval(
+		leeway_time: Duration,
+		interval: Duration,
+	) -> eyre::Result<(LocalNode<Flashblocks, OptimismConsensusDriver>, SocketAddr)>
+	{
+		let flashblocks_args =
+			FlashblocksArgs::default_on_custom_leeway_time_and_interval_for_tests(leeway_time, interval);
+
+		#[allow(clippy::missing_panics_doc)]
+		let ws_addr = flashblocks_args.ws_address().expect("default on");
+
+		let mut node = Flashblocks::test_node_with_cli_args(BuilderArgs {
+			flashblocks_args,
+			..Default::default()
+		})
+		.await?;
+
+		node.set_block_time(Duration::from_secs(2));
+
+		Ok((node, ws_addr))
+	}
 }
 
 pub trait LocalNodeFlashblocksExt {

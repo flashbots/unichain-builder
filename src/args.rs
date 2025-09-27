@@ -243,4 +243,45 @@ impl FlashblocksArgs {
 			enabled: Some(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port).into()),
 		}
 	}
+
+	pub fn default_on_custom_leeway_time_and_interval_for_tests(
+		leeway_time: Duration,
+		interval: Duration,
+	) -> Self {
+		use {
+			core::net::{Ipv4Addr, SocketAddrV4},
+			std::{
+				collections::HashSet,
+				net::TcpListener,
+				sync::{Mutex, OnceLock},
+			},
+		};
+
+		static RESERVED_PORTS: OnceLock<Mutex<HashSet<u16>>> = OnceLock::new();
+		let reserved = RESERVED_PORTS.get_or_init(|| Mutex::new(HashSet::new()));
+
+		let port = (12000..19000)
+			.find(|port| {
+				let addr = format!("0.0.0.0:{port}");
+				if let Ok(listener) = TcpListener::bind(&addr) {
+					drop(listener);
+					let mut set = reserved.lock().unwrap();
+					if set.contains(port) {
+						false
+					} else {
+						set.insert(*port);
+						true
+					}
+				} else {
+					false
+				}
+			})
+			.expect("No available ports found for test");
+
+		Self {
+			interval,
+			leeway_time,
+			enabled: Some(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port).into()),
+		}
+	}
 }

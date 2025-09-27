@@ -124,8 +124,7 @@ impl FlashblockLimits {
 				.saturating_sub(payload.block().parent().header().timestamp()),
 		);
 		let remaining_time = remaining_time
-			.min(block_time)
-			.saturating_sub(self.leeway_time);
+			.min(block_time);
 		let interval_millis = self.interval.as_millis() as u64;
 		let remaining_time_millis = remaining_time.as_millis() as u64;
 		let first_flashblock_offset = remaining_time_millis.rem(interval_millis);

@@ -131,7 +131,7 @@ fn build_flashblocks_pipeline(
 	// Flashblocks builder will always take as long as the payload job deadline,
 	// this value specifies how much buffer we want to give between flashblocks
 	// building and the payload job deadline that is given by the CL.
-	let total_building_time = Fraction(95, NonZero::new(100).unwrap());
+	let total_building_time = Minus(leeway_time);
 
 	let ws = Arc::new(WebSocketSink::new(socket_address)?);
 

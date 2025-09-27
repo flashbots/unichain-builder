@@ -125,10 +125,13 @@ fn build_flashblocks_pipeline(
 	// how often a flashblock is published
 	let interval = cli_args.flashblocks_args.interval;
 
+	// time by which flashblocks will be delivered earlier to account for latency
+	let leeway_time = cli_args.flashblocks_args.leeway_time;
+
 	// Flashblocks builder will always take as long as the payload job deadline,
 	// this value specifies how much buffer we want to give between flashblocks
 	// building and the payload job deadline that is given by the CL.
-	let total_building_time = Fraction(95, NonZero::new(100).unwrap());
+	let total_building_time = Minus(leeway_time);
 
 	let ws = Arc::new(WebSocketSink::new(socket_address)?);
 
@@ -146,7 +149,7 @@ fn build_flashblocks_pipeline(
 						BreakAfterDeadline,
 					)
 						.with_epilogue(PublishFlashblock::to(&ws))
-						.with_limits(FlashblockLimits::with_interval(interval)),
+						.with_limits(FlashblockLimits::new(interval, leeway_time)),
 				)
 				.with_step(BreakAfterDeadline),
 		)

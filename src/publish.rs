@@ -57,7 +57,7 @@ pub struct PublishFlashblock {
 	sink: Arc<WebSocketSink>,
 
 	/// Keeps track of the current flashblock number within the payload job.
-	block_number: AtomicU64,
+	flashblock_number: AtomicU64,
 
 	/// Set once at the begining of the payload job, captures immutable
 	/// information about the payload that is being built. This info is derived
@@ -79,7 +79,7 @@ impl PublishFlashblock {
 	pub fn new(sink: &Arc<WebSocketSink>, calculate_state_root: bool) -> Self {
 		Self {
 			sink: Arc::clone(sink),
-			block_number: AtomicU64::default(),
+			flashblock_number: AtomicU64::default(),
 			block_base: RwLock::new(None),
 			metrics: Metrics::default(),
 			times: Times::default(),
@@ -101,7 +101,7 @@ impl Step<Flashblocks> for PublishFlashblock {
 			.collect();
 
 		// increment flashblock number
-		let index = self.block_number.fetch_add(1, Ordering::SeqCst);
+		let index = self.flashblock_number.fetch_add(1, Ordering::SeqCst);
 
 		let base = self.block_base.read().clone();
 		let diff = ExecutionPayloadFlashblockDeltaV1 {
@@ -184,7 +184,7 @@ impl Step<Flashblocks> for PublishFlashblock {
 		self.times.on_job_ended(&self.metrics);
 
 		// reset flashblocks block counter
-		let count = self.block_number.swap(0, Ordering::SeqCst);
+		let count = self.flashblock_number.swap(0, Ordering::SeqCst);
 		self.metrics.blocks_per_payload_job.record(count as f64);
 		*self.block_base.write() = None;
 
@@ -215,7 +215,7 @@ impl PublishFlashblock {
 		&self,
 		payload: &Checkpoint<Flashblocks>,
 	) -> Span<Flashblocks> {
-		if self.block_number.load(Ordering::SeqCst) == 0 {
+		if self.flashblock_number.load(Ordering::SeqCst) == 0 {
 			// first block, get all checkpoints, including sequencer txs
 			payload.history()
 		} else {

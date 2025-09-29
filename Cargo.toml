@@ -33,7 +33,7 @@ default = ["jemalloc"]
 jemalloc = ["rblib/jemalloc"]
 
 [dependencies]
-rblib = { git = "https://github.com/flashbots/rblib.git", tag = "v0.3.1" }
+rblib = { git = "https://github.com/flashbots/rblib", rev = "9e9b93a601a4cb1a1dd5ddd3952b09ab145d3e93" }
 
 
 futures = "0.3"
@@ -67,10 +67,12 @@ alloy-serde = "1.0.27"
 reth-network-peers = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
 reth-db-api = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
 reth-node-builder = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
+reth-optimism-node = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
 reth-optimism-rpc = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
+reth-provider = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
 
 [dev-dependencies]
-rblib = { git = "https://github.com/flashbots/rblib.git", tag = "v0.3.1", features = [
+rblib = { git = "https://github.com/flashbots/rblib", rev = "9e9b93a601a4cb1a1dd5ddd3952b09ab145d3e93", features = [
   "test-utils",
 ] }
 

@@ -33,7 +33,7 @@ default = ["jemalloc"]
 jemalloc = ["rblib/jemalloc"]
 
 [dependencies]
-rblib = { git = "https://github.com/flashbots/rblib", rev = "9e9b93a601a4cb1a1dd5ddd3952b09ab145d3e93" }
+rblib = { git = "https://github.com/flashbots/rblib", rev = "5dea87ce8e9ea61692d5d3e05545b62d01671e1e" }
 
 
 futures = "0.3"
@@ -57,22 +57,22 @@ humantime = "2.2"
 atomic-time = "0.1"
 
 secp256k1 = "0.30"
-jsonrpsee = "0.25.1"
+jsonrpsee = "0.26.0"
 
-alloy-json-rpc = "1.0.18"
-alloy-serde = "1.0.27"
+alloy-json-rpc = "1.0.37"
+alloy-serde = "1.0.37"
 
 
 # reth dependencies
-reth-network-peers = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
-reth-db-api = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
-reth-node-builder = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
-reth-optimism-node = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
-reth-optimism-rpc = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
-reth-provider = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
+reth-network-peers = { git = "https://github.com/paradigmxyz/reth", tag = "v1.8.2" }
+reth-db-api = { git = "https://github.com/paradigmxyz/reth", tag = "v1.8.2" }
+reth-node-builder = { git = "https://github.com/paradigmxyz/reth", tag = "v1.8.2" }
+reth-optimism-node = { git = "https://github.com/paradigmxyz/reth", tag = "v1.8.2" }
+reth-optimism-rpc = { git = "https://github.com/paradigmxyz/reth", tag = "v1.8.2" }
+reth-provider = { git = "https://github.com/paradigmxyz/reth", tag = "v1.8.2" }
 
 [dev-dependencies]
-rblib = { git = "https://github.com/flashbots/rblib", rev = "9e9b93a601a4cb1a1dd5ddd3952b09ab145d3e93", features = [
+rblib = { git = "https://github.com/flashbots/rblib", rev = "5dea87ce8e9ea61692d5d3e05545b62d01671e1e", features = [
   "test-utils",
 ] }
 

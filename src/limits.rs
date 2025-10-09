@@ -5,6 +5,7 @@
 //! flashblock partitioning logic.
 
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicU64, Ordering};
 use {
 	crate::Flashblocks,
 	core::time::Duration,
@@ -21,129 +22,96 @@ use {
 /// At the beginning of a payload job this instance will calculate the number of
 /// target flashblocks for the given job by dividing the total payload job
 /// deadline by the flashblock interval.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct FlashblockLimits {
-	/// Holds flashblock limits state, uninitialized then called for the first time
-	state: Arc<Mutex<Option<FlashblockLimitsState>>>,
+	state: Arc<Mutex<FlashblockState>>,
 	/// The time interval between flashblocks within one payload job.
 	interval: Duration,
-	/// Time by which flashblocks will be delivered earlier to account for
-	/// latency. This time is absorbed by the first flashblock.
-	leeway_time: Duration,
 }
 
-#[derive(Debug, Clone, Copy)]
-struct FlashblockLimitsState {
-	/// Current flashblock being build
+#[derive(Debug, Clone, Default)]
+pub struct FlashblockState {
+	/// Current block being built
+	/// None - uninitialized state, happens only on first block building job
+	current_block: Option<u64>,
+	/// Current flashblock being built, number based
+	/// 0 - uninitialized state, use progress_state to initialize it
 	current_flashblock: u64,
-	// How many flashblocks to issue
-	target_flashblock: u64,
-	// How many gas each flashblock should fit
+	/// Interval of the first flashblock, it absorbs leeway time and network lag
+	first_flashblock_interval: Duration,
+	/// Gas for flashblock used for current block
 	gas_per_flashblock: u64,
+	/// Used to communicate maximum number of flashblocks on every blocks for other steps
+	// TODO: once we remove max_flashblocks from publish step we could change it to u64
+	max_flashblocks: Arc<AtomicU64>,
 }
 
-impl FlashblockLimitsState {
-	/// Returns 'number' of current flashblock.
-	fn current_flashblock_number(&self) -> u64 {
-		self.current_flashblock.saturating_add(1)
-	}
-
-	/// Returns number of flashblock planned to be built for this block
-	fn remaining_blocks(&self) -> u64 {
-		// TODO: check +1
-		self.target_flashblock.saturating_sub(self.current_flashblock)
-	}
-
-	/// Return gas limit for current flashblock
-	fn gas_limit(&self) -> u64 {
-		self.gas_per_flashblock * self.current_flashblock_number()
-	}
-
-	/// Progresses state to the next flashblock
-	fn progress_flashblock(&mut self) {
-		self.current_flashblock += 1;
-		tracing::info!("Progressing state, new {}", self.current_flashblock);
+impl FlashblockState {
+	fn current_gas_limit(&self) -> u64 {
+		self.gas_per_flashblock.saturating_mul(self.current_flashblock)
 	}
 }
-
-impl ScopedLimits<Flashblocks> for FlashblockLimits {
-	/// Creates the payload limits for the next flashblock in a new payload job.
-	fn create(
-		&self,
-		payload: &Checkpoint<Flashblocks>,
-		enclosing: &Limits,
-	) -> Limits {
-		tracing::info!("gas limit: {}",enclosing.gas_limit);
-		let payload_deadline = enclosing.deadline.expect(
-			"Flashblock limit require its enclosing scope to have a deadline",
-		);
-		let remaining_time =
-			payload_deadline.saturating_sub(payload.building_since().elapsed());
-		let current_state = *self.state.lock().expect("mutex is poisoned");
-		let (current_flashblock_interval, mut state)= if let Some(state) = current_state {
-			(self.interval, state)
-		} else {
-		// If inner not initialised that means we are building first flashblock
-			let (target_flashblock, first_flashblock_interval) = self.calculate_flashblocks(payload, remaining_time);
-			let gas_per_flashblock = enclosing.gas_limit / target_flashblock;
-			let state = FlashblockLimitsState {
-				current_flashblock: 0,
-				target_flashblock,
-				gas_per_flashblock,
-			};
-			(first_flashblock_interval, state)
-		};
-
-		tracing::info!("current_flashblock: {}", state.current_flashblock);
-		tracing::info!("target_flashblock: {}", state.target_flashblock);
-
-		if state.remaining_blocks() < 1 {
-			// we don't have enough time for more than one block
-			// saturate the payload gas within the remaining time
-			return enclosing.with_deadline(remaining_time);
-		}
-
-		let gas_used = payload.cumulative_gas_used();
-		let remaining_gas = enclosing.gas_limit.saturating_sub(gas_used);
-
-		// We have capacity to build new flashblock, progressing state
-		state.progress_flashblock();
-		self.state.lock().expect("mutex is poisoned").replace(state);
-
-		tracing::info!(
-			">--> payload txs: {}, gas used: {} ({}%), gas_remaining: {} ({}%), \
-			 next_block_gas_limit: {} ({}%), gas per block: {} ({}%), remaining \
-			 blocks: {}, remaining time: {:?}, leeway: {:?}, \
-			 current_flashblock_interval: {:?}",
-			payload.history().transactions().count(),
-			gas_used,
-			(gas_used * 100 / enclosing.gas_limit),
-			remaining_gas,
-			(remaining_gas * 100 / enclosing.gas_limit),
-			state.gas_limit(),
-			(state.gas_limit() * 100 / enclosing.gas_limit),
-			state.gas_per_flashblock,
-			(state.gas_per_flashblock * 100 / enclosing.gas_limit),
-			state.remaining_blocks(),
-			remaining_time,
-			self.leeway_time,
-			current_flashblock_interval
-		);
-
-		tracing::info!("current_flashblock_interval: {:?}", current_flashblock_interval);
-		tracing::info!("state.gas_limit(): {}", state.gas_limit());
-		enclosing
-			.with_deadline(current_flashblock_interval)
-			.with_gas_limit(state.gas_limit())
-	}
-}
-
 impl FlashblockLimits {
-	pub fn new(interval: Duration, leeway_time: Duration) -> Self {
+	pub fn new(interval: Duration, max_flashblocks: Arc<AtomicU64>) -> Self {
+		let state = FlashblockState{
+			max_flashblocks,
+			..Default::default()
+		};
 		FlashblockLimits {
-			state: Arc::new(Mutex::new(None)),
 			interval,
-			leeway_time,
+			state: Arc::new(Mutex::new(state)),
+		}
+	}
+
+	/// Checks if we have started building new block, if so we need to reset the state
+	/// This will produce empty state, progress state before using it
+	pub fn update_state(&self,
+		payload: &Checkpoint<Flashblocks>,
+		enclosing: &Limits) {
+		let mut state = self.state.lock().expect("mutex is not poisoned");
+
+		if state.current_block != Some(payload.block().number()) {
+			let payload_deadline = enclosing.deadline.expect(
+				"Flashblock limit require its enclosing scope to have a deadline",
+			);
+			let remaining_time =
+				payload_deadline.saturating_sub(payload.building_since().elapsed());
+
+			let (target_flashblock, first_flashblock_interval) = self.calculate_flashblocks(payload, remaining_time);
+			state.gas_per_flashblock = enclosing.gas_limit / target_flashblock;
+			state.current_block = Some(payload.block().number());
+			state.current_flashblock = 0;
+			state.first_flashblock_interval = first_flashblock_interval;
+			state.max_flashblocks.store(target_flashblock, Ordering::Relaxed);
+		}
+	}
+
+	/// Progresses the state to the next flashblock
+	pub fn progress_state(&self) {
+		let mut state = self.state.lock().expect("mutex is not poisoned");
+		state.current_flashblock += 1;
+	}
+
+	/// Return limits for the current flashblock
+	pub fn get_limits(&self, enclosing: &Limits) -> Limits {
+		let state = self.state.lock().expect("mutex is not poisoned");
+		// Check that state was progressed at least once
+		assert_ne!(state.current_flashblock, 0, "Get limits on uninitialized state");
+		// If we don't need to create new flashblocks - exit with immediate deadline
+		if state.current_flashblock > state.max_flashblocks.load(Ordering::Relaxed) {
+			enclosing.with_deadline(Duration::from_millis(1))
+		} else {
+			// If self.current_flashblock == 1, we are building first flashblock
+			let enclosing = if state.current_flashblock == 1 {
+				enclosing
+					.with_deadline(state.first_flashblock_interval)
+
+			} else {
+				enclosing
+					.with_deadline(self.interval)
+
+			};
+			enclosing.with_gas_limit(state.current_gas_limit())
 		}
 	}
 
@@ -180,3 +148,47 @@ impl FlashblockLimits {
 		}
 	}
 }
+
+impl ScopedLimits<Flashblocks> for FlashblockLimits {
+	/// Creates the payload limits for the next flashblock in a new payload job.
+	fn create(
+		&self,
+		payload: &Checkpoint<Flashblocks>,
+		enclosing: &Limits,
+	) -> Limits {
+		// Check the state and reset if we started building next block
+		self.update_state(payload, enclosing);
+
+		// Update flashblock state
+		self.progress_state();
+
+		let limits = self.get_limits(enclosing);
+
+		let state = self.state.lock().expect("mutex is not poisoned");
+		if state.current_flashblock <= state.max_flashblocks.load(Ordering::Relaxed) {
+			let gas_used = payload.cumulative_gas_used();
+			let remaining_gas = enclosing.gas_limit.saturating_sub(gas_used);
+			tracing::warn!(
+				">---> flashblocks: {}/{}, payload txs: {}, gas used: {} ({}%), \
+				gas_remaining: {} ({}%), next_block_gas_limit: {} ({}%), gas per block: {} ({}%), \
+				remaining_time: {}ms, gas_limit: {}",
+				state.current_flashblock,
+				state.max_flashblocks.load(Ordering::Relaxed),
+				payload.history().transactions().count(),
+				gas_used,
+				(gas_used * 100 / enclosing.gas_limit),
+				remaining_gas,
+				(remaining_gas * 100 / enclosing.gas_limit),
+				state.current_gas_limit(),
+				(state.current_gas_limit() * 100 / enclosing.gas_limit),
+				state.gas_per_flashblock,
+				(state.gas_per_flashblock * 100 / enclosing.gas_limit),
+				limits.deadline.expect("deadline is set").as_millis(),
+				limits.gas_limit,
+			);
+		}
+		limits
+
+	}
+}
+

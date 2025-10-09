@@ -1,3 +1,6 @@
+use std::sync::atomic::AtomicU64;
+use reth_optimism_node::OpAddOns;
+use reth_optimism_rpc::OpEthApiBuilder;
 use {
 	crate::{
 		args::{BuilderArgs, Cli, CliExt},
@@ -31,6 +34,15 @@ fn main() {
 			let opnode = OpNode::new(cli_args.rollup_args.clone());
 			let tx_status_rpc = TransactionStatusRpc::new(&pipeline);
 
+			let addons: OpAddOns<
+				_,
+				OpEthApiBuilder,
+				OpEngineValidatorBuilder,
+				OpEngineApiBuilder<OpEngineValidatorBuilder>,
+			> = opnode
+				.add_ons_builder::<types::RpcTypes<Flashblocks>>()
+				.build();
+
 			#[expect(clippy::large_futures)]
 			let handle = builder
 				.with_types::<OpNode>()
@@ -40,11 +52,7 @@ fn main() {
 						.attach_pool(&pool)
 						.payload(pipeline.into_service()),
 				)
-				.with_add_ons(
-					opnode
-						.add_ons_builder::<types::RpcTypes<Flashblocks>>()
-						.build::<_, OpEngineValidatorBuilder, OpEngineApiBuilder<OpEngineValidatorBuilder>>(),
-				)
+				.with_add_ons(addons)
 				.extend_rpc_modules(move |mut rpc_ctx| {
 					pool.attach_rpc(&mut rpc_ctx)?;
 					tx_status_rpc.attach_rpc(&mut rpc_ctx)?;
@@ -130,6 +138,9 @@ fn build_flashblocks_pipeline(
 
 	let ws = Arc::new(WebSocketSink::new(socket_address)?);
 
+	// TODO: this is super crutch until we have a way to break from outer payload in limits
+	let max_flashblocks = Arc::new(AtomicU64::new(0));
+
 	let pipeline = Pipeline::<Flashblocks>::named("flashblocks")
 		.with_prologue(OptimismPrologue)
 		.with_pipeline(
@@ -146,13 +157,13 @@ fn build_flashblocks_pipeline(
 						.with_epilogue(PublishFlashblock::new(
 							&ws,
 							cli_args.flashblocks_args.calculate_state_root,
+							max_flashblocks.clone(),
 						))
-						.with_limits(FlashblockLimits::new(interval, leeway_time)),
+						.with_limits(FlashblockLimits::new(interval, max_flashblocks)),
 				)
 				.with_step(BreakAfterDeadline),
 		)
 		.with_limits(Scaled::default().deadline(total_building_time));
-
 	ws.watch_shutdown(&pipeline);
 
 	Ok(pipeline)

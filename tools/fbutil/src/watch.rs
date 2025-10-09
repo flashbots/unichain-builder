@@ -45,7 +45,7 @@ pub async fn run(cli: &Cli, _: &WatchArgs) -> eyre::Result<()> {
 
 		if block.index == 0 {
 			println!();
-			let time = Local::now().time().format("%H:%M:%S").to_string();
+			let time = Local::now().time().format("%H:%M:%S%.3f").to_string();
 			println!("🔗 Block #{} {}", base.block_number, time.dimmed());
 		}
 

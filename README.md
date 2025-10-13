@@ -125,3 +125,11 @@ Reverting transactions:
 ```shell
 target/debug/contender spam --tps 30 -l -r http://localhost:2222 --min-balance 1000.5ether revert
 ```
+
+### Running in debug mode
+
+[`tokio-console`](https://github.com/tokio-rs/console) can be optionally enabled under the `debug` feature flag:
+
+```shell
+RUSTFLAGS="--cfg tokio_unstable" cargo build --release --features debug
+```

@@ -24,6 +24,9 @@ mod rpc;
 mod tests;
 
 fn main() {
+	#[cfg(feature = "debug")]
+	console_subscriber::init();
+
 	Cli::parsed()
 		.run(|builder, cli_args| async move {
 			let pool = OrderPool::<Flashblocks>::default();

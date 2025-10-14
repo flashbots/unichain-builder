@@ -21,6 +21,7 @@ use {
 		},
 		test_utils::*,
 	},
+	reth_node_builder::rpc::BasicEngineValidatorBuilder,
 	std::time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -78,7 +79,10 @@ impl Flashblocks {
 	) -> eyre::Result<(LocalNode<Flashblocks, OptimismConsensusDriver>, SocketAddr)>
 	{
 		let flashblocks_args =
-			FlashblocksArgs::default_on_custom_leeway_time_and_interval_for_tests(leeway_time, interval);
+			FlashblocksArgs::default_on_custom_leeway_time_and_interval_for_tests(
+				leeway_time,
+				interval,
+			);
 
 		#[allow(clippy::missing_panics_doc)]
 		let ws_addr = flashblocks_args.ws_address().expect("default on");
@@ -186,7 +190,7 @@ impl TestNodeFactory<Flashblocks> for Flashblocks {
 				)
 				.with_add_ons(opnode
 						.add_ons_builder::<types::RpcTypes<Flashblocks>>()
-						.build::<_, OpEngineValidatorBuilder, OpEngineApiBuilder<OpEngineValidatorBuilder>>())
+						.build::<_, OpEngineValidatorBuilder, OpEngineApiBuilder<OpEngineValidatorBuilder>, BasicEngineValidatorBuilder<OpEngineValidatorBuilder>>())
 				.extend_rpc_modules(move |mut rpc_ctx| {
 					pool.attach_rpc(&mut rpc_ctx)?;
 					tx_status_rpc.attach_rpc(&mut rpc_ctx)?;

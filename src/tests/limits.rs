@@ -13,7 +13,10 @@ use {
 		},
 		test_utils::{GenesisProviderFactory, WithFundedAccounts},
 	},
-	std::time::{SystemTime, UNIX_EPOCH},
+	std::{
+		sync::{Arc, atomic::AtomicU64},
+		time::{SystemTime, UNIX_EPOCH},
+	},
 };
 
 // This is used to create a payload attributes with a block timestamp
@@ -77,8 +80,8 @@ fn leeway_0ms_remaining_time_2000ms_interval_250ms() {
 	// around 2000ms. 2000 % 250 = 0, so we expect ~250ms (flashblock interval)
 	// for the first flashblock interval.
 	let interval = Duration::from_millis(250);
-	let leeway = Duration::from_millis(0);
-	let limits = FlashblockLimits::new(interval, leeway);
+	let max_flashblocks = Arc::new(AtomicU64::new(0));
+	let limits = FlashblockLimits::new(interval, max_flashblocks);
 	let checkpoint = checkpoint_with_future_offset_secs(2);
 	let payload_deadline = Duration::from_millis(2000);
 
@@ -95,8 +98,8 @@ fn leeway_75ms_remaining_time_1925ms_interval_250ms() {
 	// around 1925ms. 1925 % 250 = 175, so we expect a reduced 175ms for the
 	// first flashblock interval.
 	let interval = Duration::from_millis(250);
-	let leeway = Duration::from_millis(75);
-	let limits = FlashblockLimits::new(interval, leeway);
+	let max_flashblocks = Arc::new(AtomicU64::new(0));
+	let limits = FlashblockLimits::new(interval, max_flashblocks);
 	// Use a large block_time so it doesn't cap the time_drift calculation
 	let checkpoint = checkpoint_with_future_offset_secs(2);
 	let payload_deadline = Duration::from_millis(2000);
@@ -116,8 +119,8 @@ fn leeway_75ms_remaining_time_1925ms_interval_750ms() {
 	// first flashblock interval is 425ms, followed by two flashblocks of 750ms
 	// intervals.
 	let interval = Duration::from_millis(750);
-	let leeway = Duration::from_millis(75);
-	let limits = FlashblockLimits::new(interval, leeway);
+	let max_flashblocks = Arc::new(AtomicU64::new(0));
+	let limits = FlashblockLimits::new(interval, max_flashblocks);
 	let payload_deadline = Duration::from_millis(2000);
 
 	let checkpoint = checkpoint_with_future_offset_secs(2);

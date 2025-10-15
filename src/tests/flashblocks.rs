@@ -80,7 +80,7 @@ async fn blocks_with_txs_smoke() -> eyre::Result<()> {
 		// make sure that all transactions in flashblocks actually made
 		// their way to the block.
 		assert!(block.includes(&txhashes));
-		assert_eq!(block.tx_count() as usize, txhashes.len());
+		assert_eq!(block.tx_count(), txhashes.len());
 
 		// ensure that transactions in flashblocks appear in the same order
 		// as transactions in the final block
@@ -95,6 +95,8 @@ async fn blocks_with_txs_smoke() -> eyre::Result<()> {
 #[tokio::test]
 async fn flashblock_timings_2000ms_block_time_0ms_leeway_time()
 -> eyre::Result<()> {
+	const TXS_PER_BLOCK: usize = 60;
+
 	let (node, ws_addr) =
 		Flashblocks::test_node_with_flashblocks_on_and_custom_leeway_time_and_interval(
 			Duration::from_millis(0),
@@ -111,7 +113,6 @@ async fn flashblock_timings_2000ms_block_time_0ms_leeway_time()
 	tokio::time::sleep(sleep_duration).await;
 
 	// let block = node.next_block().await?;
-	const TXS_PER_BLOCK: usize = 60;
 	let mut sent_txs = Vec::new();
 	let block = node
 		.while_next_block(async {
@@ -146,6 +147,8 @@ async fn flashblock_timings_2000ms_block_time_0ms_leeway_time()
 // time
 async fn flashblock_timings_2000ms_block_time_75ms_leeway_time()
 -> eyre::Result<()> {
+	const TXS_PER_BLOCK: usize = 60;
+
 	let (node, ws_addr) = Flashblocks::test_node_with_flashblocks_on().await?;
 	let ws = WebSocketObserver::new(ws_addr).await?;
 
@@ -157,7 +160,6 @@ async fn flashblock_timings_2000ms_block_time_75ms_leeway_time()
 	tokio::time::sleep(sleep_duration).await;
 
 	// let block = node.next_block().await?;
-	const TXS_PER_BLOCK: usize = 60;
 	let mut sent_txs = Vec::new();
 	let block = node
 		.while_next_block(async {
@@ -192,6 +194,8 @@ async fn flashblock_timings_2000ms_block_time_75ms_leeway_time()
 // leeway time
 async fn flashblock_timings_2000ms_block_time_500ms_leeway_time()
 -> eyre::Result<()> {
+	const TXS_PER_BLOCK: usize = 60;
+
 	let (node, ws_addr) =
 		Flashblocks::test_node_with_flashblocks_on_and_custom_leeway_time_and_interval(
 			Duration::from_millis(500),
@@ -208,7 +212,6 @@ async fn flashblock_timings_2000ms_block_time_500ms_leeway_time()
 	tokio::time::sleep(sleep_duration).await;
 
 	// let block = node.next_block().await?;
-	const TXS_PER_BLOCK: usize = 60;
 	let mut sent_txs = Vec::new();
 	let block = node
 		.while_next_block(async {

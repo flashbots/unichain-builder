@@ -30,8 +30,7 @@ fn test_leeway_time_cli_parsing() {
 		if let Commands::Node(node_command) = args.command {
 			assert_eq!(
 				node_command.ext.flashblocks_args.leeway_time, expected,
-				"Failed for input: {}",
-				input
+				"Failed for input: {input}",
 			);
 		} else {
 			panic!("Expected Node command");
@@ -53,8 +52,7 @@ fn test_leeway_time_invalid_format() {
 
 		assert!(
 			result.is_err(),
-			"Should fail to parse invalid input: {}",
-			input
+			"Should fail to parse invalid input: {input}",
 		);
 	}
 }

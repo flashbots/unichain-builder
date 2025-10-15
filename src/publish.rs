@@ -102,7 +102,7 @@ impl Step<Flashblocks> for PublishFlashblock {
 			tracing::warn!("Stopping flashblocks production");
 			// We have reached maximum number of flashblocks, stop sending them
 			return ControlFlow::Break(payload)
-		};
+		}
 
 		let this_block_span = self.unpublished_payload(&payload);
 		let transactions: Vec<_> = this_block_span

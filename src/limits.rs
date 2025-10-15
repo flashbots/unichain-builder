@@ -4,13 +4,18 @@
 //! individual flashblocks. This is essentially where we define the block /
 //! flashblock partitioning logic.
 
-use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicU64, Ordering};
 use {
 	crate::Flashblocks,
 	core::time::Duration,
 	rblib::{alloy::consensus::BlockHeader, prelude::*},
-	std::ops::{Div, Rem},
+	std::{
+		ops::{Div, Rem},
+		sync::{
+			Arc,
+			Mutex,
+			atomic::{AtomicU64, Ordering},
+		},
+	},
 };
 
 /// Specifies the limits for individual flashblocks.
@@ -35,25 +40,29 @@ pub struct FlashblockState {
 	/// None - uninitialized state, happens only on first block building job
 	current_block: Option<u64>,
 	/// Current flashblock being built, number based
-	/// 0 - uninitialized state, use progress_state to initialize it
+	/// 0 - uninitialized state, use `progress_state` to initialize it
 	current_flashblock: u64,
 	/// Interval of the first flashblock, it absorbs leeway time and network lag
 	first_flashblock_interval: Duration,
 	/// Gas for flashblock used for current block
 	gas_per_flashblock: u64,
-	/// Used to communicate maximum number of flashblocks on every blocks for other steps
-	// TODO: once we remove max_flashblocks from publish step we could change it to u64
+	/// Used to communicate maximum number of flashblocks on every blocks for
+	/// other steps
+	// TODO: once we remove max_flashblocks from publish step we could change it
+	// to u64
 	max_flashblocks: Arc<AtomicU64>,
 }
 
 impl FlashblockState {
 	fn current_gas_limit(&self) -> u64 {
-		self.gas_per_flashblock.saturating_mul(self.current_flashblock)
+		self
+			.gas_per_flashblock
+			.saturating_mul(self.current_flashblock)
 	}
 }
 impl FlashblockLimits {
 	pub fn new(interval: Duration, max_flashblocks: Arc<AtomicU64>) -> Self {
-		let state = FlashblockState{
+		let state = FlashblockState {
 			max_flashblocks,
 			..Default::default()
 		};
@@ -63,11 +72,13 @@ impl FlashblockLimits {
 		}
 	}
 
-	/// Checks if we have started building new block, if so we need to reset the state
-	/// This will produce empty state, progress state before using it
-	pub fn update_state(&self,
+	/// Checks if we have started building new block, if so we need to reset the
+	/// state This will produce empty state, progress state before using it
+	pub fn update_state(
+		&self,
 		payload: &Checkpoint<Flashblocks>,
-		enclosing: &Limits) {
+		enclosing: &Limits,
+	) {
 		let mut state = self.state.lock().expect("mutex is not poisoned");
 
 		if state.current_block != Some(payload.block().number()) {
@@ -77,12 +88,15 @@ impl FlashblockLimits {
 			let remaining_time =
 				payload_deadline.saturating_sub(payload.building_since().elapsed());
 
-			let (target_flashblock, first_flashblock_interval) = self.calculate_flashblocks(payload, remaining_time);
+			let (target_flashblock, first_flashblock_interval) =
+				self.calculate_flashblocks(payload, remaining_time);
 			state.gas_per_flashblock = enclosing.gas_limit / target_flashblock;
 			state.current_block = Some(payload.block().number());
 			state.current_flashblock = 0;
 			state.first_flashblock_interval = first_flashblock_interval;
-			state.max_flashblocks.store(target_flashblock, Ordering::Relaxed);
+			state
+				.max_flashblocks
+				.store(target_flashblock, Ordering::Relaxed);
 		}
 	}
 
@@ -96,20 +110,20 @@ impl FlashblockLimits {
 	pub fn get_limits(&self, enclosing: &Limits) -> Limits {
 		let state = self.state.lock().expect("mutex is not poisoned");
 		// Check that state was progressed at least once
-		assert_ne!(state.current_flashblock, 0, "Get limits on uninitialized state");
+		assert_ne!(
+			state.current_flashblock, 0,
+			"Get limits on uninitialized state"
+		);
 		// If we don't need to create new flashblocks - exit with immediate deadline
-		if state.current_flashblock > state.max_flashblocks.load(Ordering::Relaxed) {
+		if state.current_flashblock > state.max_flashblocks.load(Ordering::Relaxed)
+		{
 			enclosing.with_deadline(Duration::from_millis(1))
 		} else {
 			// If self.current_flashblock == 1, we are building first flashblock
 			let enclosing = if state.current_flashblock == 1 {
-				enclosing
-					.with_deadline(state.first_flashblock_interval)
-
+				enclosing.with_deadline(state.first_flashblock_interval)
 			} else {
-				enclosing
-					.with_deadline(self.interval)
-
+				enclosing.with_deadline(self.interval)
 			};
 			enclosing.with_gas_limit(state.current_gas_limit())
 		}
@@ -130,10 +144,11 @@ impl FlashblockLimits {
 				.timestamp()
 				.saturating_sub(payload.block().parent().header().timestamp()),
 		);
-		let remaining_time = remaining_time
-			.min(block_time);
-		let interval_millis = self.interval.as_millis() as u64;
-		let remaining_time_millis = remaining_time.as_millis() as u64;
+		let remaining_time = remaining_time.min(block_time);
+		let interval_millis = u64::try_from(self.interval.as_millis())
+			.expect("interval_millis should never be greater than u64::MAX");
+		let remaining_time_millis = u64::try_from(remaining_time.as_millis())
+			.expect("remaining_time_millis should never be greater than u64::MAX");
 		let first_flashblock_offset = remaining_time_millis.rem(interval_millis);
 
 		if first_flashblock_offset == 0 {
@@ -165,13 +180,14 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 		let limits = self.get_limits(enclosing);
 
 		let state = self.state.lock().expect("mutex is not poisoned");
-		if state.current_flashblock <= state.max_flashblocks.load(Ordering::Relaxed) {
+		if state.current_flashblock <= state.max_flashblocks.load(Ordering::Relaxed)
+		{
 			let gas_used = payload.cumulative_gas_used();
 			let remaining_gas = enclosing.gas_limit.saturating_sub(gas_used);
 			tracing::warn!(
 				">---> flashblocks: {}/{}, payload txs: {}, gas used: {} ({}%), \
-				gas_remaining: {} ({}%), next_block_gas_limit: {} ({}%), gas per block: {} ({}%), \
-				remaining_time: {}ms, gas_limit: {}",
+				 gas_remaining: {} ({}%), next_block_gas_limit: {} ({}%), gas per \
+				 block: {} ({}%), remaining_time: {}ms, gas_limit: {}",
 				state.current_flashblock,
 				state.max_flashblocks.load(Ordering::Relaxed),
 				payload.history().transactions().count(),
@@ -188,7 +204,5 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 			);
 		}
 		limits
-
 	}
 }
-

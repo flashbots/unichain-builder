@@ -46,7 +46,6 @@ fn main() {
 				.add_ons_builder::<types::RpcTypes<Flashblocks>>()
 				.build();
 
-			#[expect(clippy::large_futures)]
 			let handle = builder
 				.with_types::<OpNode>()
 				.with_components(

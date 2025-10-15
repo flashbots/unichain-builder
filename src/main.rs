@@ -147,12 +147,23 @@ fn build_flashblocks_pipeline(
 	// in limits
 	let max_flashblocks = Arc::new(AtomicU64::new(0));
 
-	let flashblock_building_pipeline = (
+	let flashblock_building_pipeline_steps = (
 		AppendOrders::from_pool(pool).with_ok_on_limit(),
 		OrderByPriorityFee::default(),
 		RemoveRevertedTransactions::default(),
 		BreakAfterDeadline,
 	)
+		.into_pipeline();
+
+	let flashblock_building_pipeline_steps =
+		if let Some(ref signer) = cli_args.builder_signer {
+			flashblock_building_pipeline_steps
+				.with_epilogue(BuilderEpilogue::with_signer(signer.clone().into()))
+		} else {
+			flashblock_building_pipeline_steps
+		};
+
+	let flashblock_building_pipeline = flashblock_building_pipeline_steps
 		.with_epilogue(PublishFlashblock::new(
 			&ws,
 			cli_args.flashblocks_args.calculate_state_root,

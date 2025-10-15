@@ -1,4 +1,4 @@
-name: CI
+name: "[unichain-builder] Checks"
 
 on:
   workflow_dispatch:
@@ -15,7 +15,7 @@ env:
 jobs:
   check:
     name: Cargo Check
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-32x
     steps:
       - uses: actions/checkout@v4
 
@@ -45,20 +45,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libclang-dev libssl-dev pkg-config protobuf-compiler
 
-      - name: Inject PAT token to enable fetching private repos
-        env:
-          GH_TOKEN: ${{ secrets.FLASHBOTS_RBLIB_FETCHER }}
-        run: |
-          git config --global url."https://x-access-token:${GH_TOKEN}@github.com/flashbots/".insteadOf "https://github.com/flashbots/"
-
       - name: Run cargo check
-        env:
-          CARGO_NET_GIT_FETCH_WITH_CLI: "true"
-        run: cargo check --workspace --all-targets --all-features
+        run: make check
 
   clippy:
     name: Clippy
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-32x
     steps:
       - uses: actions/checkout@v4
 
@@ -90,20 +82,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libclang-dev libssl-dev pkg-config protobuf-compiler
 
-      - name: Inject PAT token to enable fetching private repos
-        env:
-          GH_TOKEN: ${{ secrets.FLASHBOTS_RBLIB_FETCHER }}
-        run: |
-          git config --global url."https://x-access-token:${GH_TOKEN}@github.com/flashbots/".insteadOf "https://github.com/flashbots/"
-
       - name: Run clippy
-        env:
-          CARGO_NET_GIT_FETCH_WITH_CLI: "true"
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+        run: make clippy
 
   fmt:
     name: Rustfmt
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-32x
     steps:
       - uses: actions/checkout@v4
 
@@ -113,11 +97,11 @@ jobs:
           components: rustfmt
 
       - name: Run cargo fmt
-        run: cargo +nightly fmt --all -- --check
+        run: make fmt-check
 
   test:
     name: Tests
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-32x
     steps:
       - uses: actions/checkout@v4
 
@@ -147,13 +131,5 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libclang-dev libssl-dev pkg-config protobuf-compiler
 
-      - name: Inject PAT token to enable fetching private repos
-        env:
-          GH_TOKEN: ${{ secrets.FLASHBOTS_RBLIB_FETCHER }}
-        run: |
-          git config --global url."https://x-access-token:${GH_TOKEN}@github.com/flashbots/".insteadOf "https://github.com/flashbots/"
-
       - name: Run tests
-        env:
-          CARGO_NET_GIT_FETCH_WITH_CLI: "true"
-        run: cargo test --workspace --all-features
+        run: make test

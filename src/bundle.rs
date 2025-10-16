@@ -202,7 +202,7 @@ impl Bundle<Flashblocks> for FlashblocksBundle {
 	/// hash reverts. Otherwise, returns false and it signals that this
 	/// transaction must have a successful (non-revert and non-fail) for the
 	/// bundle to be eligible for inclusion in a block.
-	fn is_allowed_to_fail(&self, tx: TxHash) -> bool {
+	fn is_allowed_to_fail(&self, tx: &TxHash) -> bool {
 		self.reverting_tx_hashes.contains(&tx)
 	}
 
@@ -210,7 +210,7 @@ impl Bundle<Flashblocks> for FlashblocksBundle {
 	/// hash is removed from this bundle. Otherwise, returns false and it signals
 	/// that this transaction might not be removed from the bundle e.g. during
 	/// revert protection.
-	fn is_optional(&self, tx: TxHash) -> bool {
+	fn is_optional(&self, tx: &TxHash) -> bool {
 		self.dropping_tx_hashes.contains(&tx)
 	}
 

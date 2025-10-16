@@ -79,12 +79,6 @@ fn build_pipeline(
 		build_classic_pipeline(cli_args, pool)
 	};
 
-	if let Some(ref signer) = cli_args.builder_signer {
-		let epilogue = BuilderEpilogue::with_signer(signer.clone().into());
-		let limiter = epilogue.limiter();
-		pipeline = pipeline.with_epilogue(epilogue).with_limits(limiter);
-	}
-
 	pool.attach_pipeline(&pipeline);
 
 	Ok(pipeline)
@@ -140,6 +134,7 @@ fn build_flashblocks_pipeline(
 	let total_building_time = Minus(leeway_time);
 
 	let ws = Arc::new(WebSocketSink::new(socket_address)?);
+	let builder_tx_epilogue = BuilderEpilogue::with_signer(cli_args.builder_signer.clone().expect("builder key is provided").into());
 
 	// TODO: this is super crutch until we have a way to break from outer payload in limits
 	let max_flashblocks = Arc::new(AtomicU64::new(0));
@@ -157,6 +152,7 @@ fn build_flashblocks_pipeline(
 						RemoveRevertedTransactions::default(),
 						BreakAfterDeadline,
 					)
+						.with_epilogue(builder_tx_epilogue)
 						.with_epilogue(PublishFlashblock::new(
 							&ws,
 							cli_args.flashblocks_args.calculate_state_root,

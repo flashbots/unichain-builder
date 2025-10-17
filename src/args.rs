@@ -88,12 +88,12 @@ pub struct FlashblocksArgs {
 	enabled: Option<SocketAddr>,
 
 	/// Should we calculate the state root for each flashblock
-    #[arg(
-        long = "flashblocks.calculate-state-root",
-        default_value = "false",
-        env = "FLASHBLOCKS_CALCULATE_STATE_ROOT"
-    )]
-    pub calculate_state_root: bool,
+	#[arg(
+		long = "flashblocks.calculate-state-root",
+		default_value = "false",
+		env = "FLASHBLOCKS_CALCULATE_STATE_ROOT"
+	)]
+	pub calculate_state_root: bool,
 }
 
 impl Default for BuilderArgs {
@@ -249,7 +249,7 @@ impl FlashblocksArgs {
 			interval: Duration::from_millis(250),
 			leeway_time: Duration::from_millis(75),
 			enabled: Some(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port).into()),
-    		calculate_state_root: true,
+			calculate_state_root: true,
 		}
 	}
 

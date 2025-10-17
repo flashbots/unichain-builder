@@ -36,7 +36,8 @@ use {
 		},
 	},
 	tokio_tungstenite::{
-		WebSocketStream, accept_async,
+		WebSocketStream,
+		accept_async,
 		tungstenite::{Message, Utf8Bytes},
 	},
 	tracing::{debug, trace},
@@ -73,12 +74,16 @@ pub struct PublishFlashblock {
 
 	/// Should we calculate the state root for each flashblock
 	pub calculate_state_root: bool,
-	
+
 	max_flashblocks: Arc<AtomicU64>,
 }
 
 impl PublishFlashblock {
-	pub fn new(sink: &Arc<WebSocketSink>, calculate_state_root: bool, max_flashblocks: Arc<AtomicU64>) -> Self {
+	pub fn new(
+		sink: &Arc<WebSocketSink>,
+		calculate_state_root: bool,
+		max_flashblocks: Arc<AtomicU64>,
+	) -> Self {
 		Self {
 			sink: Arc::clone(sink),
 			flashblock_number: AtomicU64::default(),
@@ -86,7 +91,7 @@ impl PublishFlashblock {
 			metrics: Metrics::default(),
 			times: Times::default(),
 			calculate_state_root,
-			max_flashblocks
+			max_flashblocks,
 		}
 	}
 }
@@ -97,19 +102,22 @@ impl Step<Flashblocks> for PublishFlashblock {
 		payload: Checkpoint<Flashblocks>,
 		ctx: StepContext<Flashblocks>,
 	) -> ControlFlow<Flashblocks> {
-		// TODO: this is super crutch until we have a way to break from outer payload in limits
-		if self.flashblock_number.load(Ordering::Relaxed) >= self.max_flashblocks.load(Ordering::Relaxed) {
+		// TODO: this is super crutch until we have a way to break from outer
+		// payload in limits
+		if self.flashblock_number.load(Ordering::Relaxed)
+			>= self.max_flashblocks.load(Ordering::Relaxed)
+		{
 			tracing::warn!("Stopping flashblocks production");
 			// We have reached maximum number of flashblocks, stop sending them
-			return ControlFlow::Break(payload)
-		};
+			return ControlFlow::Break(payload);
+		}
 
 		let this_block_span = self.unpublished_payload(&payload);
 		let transactions: Vec<_> = this_block_span
 			.transactions()
 			.map(|tx| tx.encoded_2718().into())
 			.collect();
-		
+
 		// increment flashblock number
 		let index = self.flashblock_number.fetch_add(1, Ordering::SeqCst);
 

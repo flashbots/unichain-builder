@@ -1,6 +1,3 @@
-use std::sync::atomic::AtomicU64;
-use reth_optimism_node::OpAddOns;
-use reth_optimism_rpc::OpEthApiBuilder;
 use {
 	crate::{
 		args::{BuilderArgs, Cli, CliExt},
@@ -10,8 +7,14 @@ use {
 	},
 	platform::Flashblocks,
 	rblib::{pool::*, prelude::*, steps::*},
-	reth_optimism_node::{OpEngineApiBuilder, OpEngineValidatorBuilder, OpNode},
-	std::sync::Arc,
+	reth_optimism_node::{
+		OpAddOns,
+		OpEngineApiBuilder,
+		OpEngineValidatorBuilder,
+		OpNode,
+	},
+	reth_optimism_rpc::OpEthApiBuilder,
+	std::sync::{Arc, atomic::AtomicU64},
 };
 
 mod args;
@@ -46,7 +49,6 @@ fn main() {
 				.add_ons_builder::<types::RpcTypes<Flashblocks>>()
 				.build();
 
-			#[expect(clippy::large_futures)]
 			let handle = builder
 				.with_types::<OpNode>()
 				.with_components(
@@ -141,7 +143,8 @@ fn build_flashblocks_pipeline(
 
 	let ws = Arc::new(WebSocketSink::new(socket_address)?);
 
-	// TODO: this is super crutch until we have a way to break from outer payload in limits
+	// TODO: this is super crutch until we have a way to break from outer payload
+	// in limits
 	let max_flashblocks = Arc::new(AtomicU64::new(0));
 
 	let pipeline = Pipeline::<Flashblocks>::named("flashblocks")

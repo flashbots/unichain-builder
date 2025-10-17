@@ -3,11 +3,11 @@ use {
 	chrono::Local,
 	clap::Args,
 	colored::Colorize,
-	unichain_builder::FlashblocksPayloadV1,
 	futures::StreamExt,
 	human_format::Formatter,
 	std::time::Instant,
 	tokio_tungstenite::{connect_async, tungstenite::Message},
+	unichain_builder::FlashblocksPayloadV1,
 };
 
 #[derive(Debug, Clone, Args)]

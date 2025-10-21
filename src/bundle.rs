@@ -203,7 +203,7 @@ impl Bundle<Flashblocks> for FlashblocksBundle {
 	/// transaction must have a successful (non-revert and non-fail) for the
 	/// bundle to be eligible for inclusion in a block.
 	fn is_allowed_to_fail(&self, tx: &TxHash) -> bool {
-		self.reverting_tx_hashes.contains(&tx)
+		self.reverting_tx_hashes.contains(tx)
 	}
 
 	/// Returns true if the bundle will be valid if a transaction with the given

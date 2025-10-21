@@ -19,11 +19,7 @@ use {
 	futures::{SinkExt, StreamExt},
 	parking_lot::RwLock,
 	rblib::{
-		alloy::{
-			consensus::BlockHeader,
-			eips::Encodable2718,
-			primitives::{B256, Bloom, U256},
-		},
+		alloy::{consensus::BlockHeader, eips::Encodable2718, primitives::U256},
 		prelude::*,
 	},
 	reth_node_builder::PayloadBuilderAttributes,
@@ -72,16 +68,14 @@ pub struct PublishFlashblock {
 	/// information is used to produce some of the metrics.
 	times: Times,
 
-	/// Should we calculate the state root for each flashblock
-	pub calculate_state_root: bool,
-
 	max_flashblocks: Arc<AtomicU64>,
 }
 
 impl PublishFlashblock {
 	pub fn new(
 		sink: &Arc<WebSocketSink>,
-		calculate_state_root: bool,
+		// TODO: Will be implemented later
+		_calculate_state_root: bool,
 		max_flashblocks: Arc<AtomicU64>,
 	) -> Self {
 		Self {
@@ -90,7 +84,6 @@ impl PublishFlashblock {
 			block_base: RwLock::new(None),
 			metrics: Metrics::default(),
 			times: Times::default(),
-			calculate_state_root,
 			max_flashblocks,
 		}
 	}
@@ -121,16 +114,27 @@ impl Step<Flashblocks> for PublishFlashblock {
 		// increment flashblock number
 		let index = self.flashblock_number.fetch_add(1, Ordering::SeqCst);
 
-		let base = self.block_base.read().clone();
+		let sealed_block = payload.build_payload();
+		if let Err(e) = sealed_block {
+			tracing::error!("Failed to build sealed block: {:?}", e);
+			return ControlFlow::Break(payload);
+		}
+		let sealed_block = sealed_block.expect("sealed block is ok");
+		// TODO: .take() is a bit strange here, we will move out base flashblocks
+		// into it's own step
+		let base = self.block_base.write().take();
 		let diff = ExecutionPayloadFlashblockDeltaV1 {
-			state_root: self.compute_state_root(&payload, &ctx),
-			receipts_root: B256::ZERO, // TODO: compute receipts root
-			logs_bloom: Bloom::default(), // TODO
+			state_root: sealed_block.block().state_root,
+			receipts_root: sealed_block.block().receipts_root,
+			logs_bloom: sealed_block.block().logs_bloom,
 			gas_used: payload.cumulative_gas_used(),
-			block_hash: B256::ZERO, // TODO: compute block hash
+			block_hash: sealed_block.block().hash(),
 			transactions,
 			withdrawals: vec![],
-			withdrawals_root: B256::ZERO, // TODO: compute withdrawals root
+			withdrawals_root: sealed_block
+				.block()
+				.withdrawals_root()
+				.expect("withdrawals_root is present"),
 		};
 
 		// Push the contents of the payload
@@ -242,37 +246,6 @@ impl PublishFlashblock {
 		}
 	}
 
-	fn compute_state_root(
-		&self,
-		payload: &Checkpoint<Flashblocks>,
-		ctx: &StepContext<Flashblocks>,
-	) -> B256 {
-		if !self.calculate_state_root {
-			return B256::ZERO;
-		}
-
-		let state_root_start_time = Instant::now();
-
-		let state_provider = ctx.block().base_state();
-		let hashed_state =
-			state_provider.hashed_post_state(payload.state().unwrap());
-		let (state_root, _trie_output) = state_provider
-			.state_root_with_updates(hashed_state)
-			.unwrap();
-
-		let state_root_calculation_time = state_root_start_time.elapsed();
-		self
-			.metrics
-			.state_root_calculation_duration
-			.record(state_root_calculation_time);
-		self
-			.metrics
-			.state_root_calculation_gauge
-			.set(state_root_calculation_time);
-
-		state_root
-	}
-
 	/// Called for each flashblock to capture metrics about the produced
 	/// flashblock contents.
 	fn capture_payload_metrics(&self, span: &Span<Flashblocks>) {
@@ -336,12 +309,6 @@ struct Metrics {
 
 	/// The number of failures on the websocket transport layer.
 	pub websocket_publish_errors_total: Counter,
-
-	/// Histogram of state root calculation duration
-	pub state_root_calculation_duration: Histogram,
-
-	/// Latest state root calculation duration
-	pub state_root_calculation_gauge: Gauge,
 }
 
 /// Used to track timing information for metrics.

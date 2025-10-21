@@ -34,7 +34,7 @@ jemalloc = ["rblib/jemalloc"]
 debug = ["tokio/full", "tokio/tracing", "dep:console-subscriber"]
 
 [dependencies]
-rblib = { git = "https://github.com/flashbots/rblib", rev = "5dea87ce8e9ea61692d5d3e05545b62d01671e1e" }
+rblib = { git = "https://github.com/flashbots/rblib", rev = "c9625fa451b13452cce68ce86580745a6fba8d76" }
 
 futures = "0.3"
 tokio = "1.46"
@@ -74,7 +74,7 @@ reth-provider = { git = "https://github.com/paradigmxyz/reth", tag = "v1.8.2" }
 console-subscriber = { version = "0.4", optional = true }
 
 [dev-dependencies]
-rblib = { git = "https://github.com/flashbots/rblib", rev = "5dea87ce8e9ea61692d5d3e05545b62d01671e1e", features = [
+rblib = { git = "https://github.com/flashbots/rblib", rev = "c9625fa451b13452cce68ce86580745a6fba8d76", features = [
     "test-utils",
 ] }
 

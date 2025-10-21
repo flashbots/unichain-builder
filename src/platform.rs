@@ -1,6 +1,6 @@
 use {
 	crate::bundle::FlashblocksBundle,
-	rblib::prelude::*,
+	rblib::{prelude::*, reth::providers::StateProvider},
 	serde::{Deserialize, Serialize},
 	std::sync::Arc,
 };
@@ -44,15 +44,14 @@ impl Platform for Flashblocks {
 		)
 	}
 
-	fn build_payload<P, Provider>(
+	fn build_payload<P>(
 		payload: Checkpoint<P>,
-		provider: &Provider,
+		provider: &dyn StateProvider,
 	) -> Result<types::BuiltPayload<P>, PayloadBuilderError>
 	where
 		P: traits::PlatformExecBounds<Self>,
-		Provider: traits::ProviderBounds<Self>,
 	{
-		Optimism::build_payload::<P, Provider>(payload, provider)
+		Optimism::build_payload::<P>(payload, provider)
 	}
 }
 

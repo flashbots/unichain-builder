@@ -19,11 +19,7 @@ use {
 	futures::{SinkExt, StreamExt},
 	parking_lot::RwLock,
 	rblib::{
-		alloy::{
-			consensus::BlockHeader,
-			eips::Encodable2718,
-			primitives::U256,
-		},
+		alloy::{consensus::BlockHeader, eips::Encodable2718, primitives::U256},
 		prelude::*,
 	},
 	reth_node_builder::PayloadBuilderAttributes,
@@ -78,7 +74,7 @@ pub struct PublishFlashblock {
 impl PublishFlashblock {
 	pub fn new(
 		sink: &Arc<WebSocketSink>,
-		// Will be implemented later
+		// TODO: Will be implemented later
 		_calculate_state_root: bool,
 		max_flashblocks: Arc<AtomicU64>,
 	) -> Self {
@@ -124,7 +120,8 @@ impl Step<Flashblocks> for PublishFlashblock {
 			return ControlFlow::Break(payload);
 		}
 		let sealed_block = sealed_block.expect("sealed block is ok");
-		// TODO: .take() is a bit strange here, we will move out base flashblocks into it's own step
+		// TODO: .take() is a bit strange here, we will move out base flashblocks
+		// into it's own step
 		let base = self.block_base.write().take();
 		let diff = ExecutionPayloadFlashblockDeltaV1 {
 			state_root: sealed_block.block().state_root,
@@ -134,7 +131,10 @@ impl Step<Flashblocks> for PublishFlashblock {
 			block_hash: sealed_block.block().hash(),
 			transactions,
 			withdrawals: vec![],
-			withdrawals_root: sealed_block.block().withdrawals_root().expect("withdrawals_root is present"),
+			withdrawals_root: sealed_block
+				.block()
+				.withdrawals_root()
+				.expect("withdrawals_root is present"),
 		};
 
 		// Push the contents of the payload

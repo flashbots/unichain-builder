@@ -211,7 +211,7 @@ impl Bundle<Flashblocks> for FlashblocksBundle {
 	/// that this transaction might not be removed from the bundle e.g. during
 	/// revert protection.
 	fn is_optional(&self, tx: &TxHash) -> bool {
-		self.dropping_tx_hashes.contains(&tx)
+		self.dropping_tx_hashes.contains(tx)
 	}
 
 	fn hash(&self) -> B256 {

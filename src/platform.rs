@@ -1,3 +1,4 @@
+use rblib::reth::providers::StateProvider;
 use {
 	crate::bundle::FlashblocksBundle,
 	rblib::prelude::*,
@@ -44,15 +45,14 @@ impl Platform for Flashblocks {
 		)
 	}
 
-	fn build_payload<P, Provider>(
+	fn build_payload<P>(
 		payload: Checkpoint<P>,
-		provider: &Provider,
+		provider: &dyn StateProvider
 	) -> Result<types::BuiltPayload<P>, PayloadBuilderError>
 	where
 		P: traits::PlatformExecBounds<Self>,
-		Provider: traits::ProviderBounds<Self>,
 	{
-		Optimism::build_payload::<P, Provider>(payload, provider)
+		Optimism::build_payload::<P>(payload, provider)
 	}
 }
 

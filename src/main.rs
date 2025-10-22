@@ -1,3 +1,4 @@
+use tracing::warn;
 use {
 	crate::{
 		args::{BuilderArgs, Cli, CliExt},
@@ -160,6 +161,7 @@ fn build_flashblocks_pipeline(
 			flashblock_building_pipeline_steps
 				.with_epilogue(BuilderEpilogue::with_signer(signer.clone().into()))
 		} else {
+			warn!("BUILDER_SECRET_KEY is not specified, skipping builder transactions");
 			flashblock_building_pipeline_steps
 		};
 

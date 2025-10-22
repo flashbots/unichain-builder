@@ -36,7 +36,7 @@ use {
 		accept_async,
 		tungstenite::{Message, Utf8Bytes},
 	},
-	tracing::{debug, trace},
+	tracing::{debug, trace, error},
 };
 
 /// Flashblocks pipeline step for publishing flashblocks to external
@@ -91,7 +91,7 @@ impl PublishFlashblock {
 
 impl Step<Flashblocks> for PublishFlashblock {
 	async fn step(
-		self: std::sync::Arc<Self>,
+		self: Arc<Self>,
 		payload: Checkpoint<Flashblocks>,
 		ctx: StepContext<Flashblocks>,
 	) -> ControlFlow<Flashblocks> {
@@ -100,7 +100,7 @@ impl Step<Flashblocks> for PublishFlashblock {
 		if self.flashblock_number.load(Ordering::Relaxed)
 			>= self.max_flashblocks.load(Ordering::Relaxed)
 		{
-			tracing::trace!("Stopping flashblocks production");
+			trace!("Stopping flashblocks production");
 			// We have reached maximum number of flashblocks, stop sending them
 			return ControlFlow::Break(payload);
 		}
@@ -116,7 +116,7 @@ impl Step<Flashblocks> for PublishFlashblock {
 
 		let sealed_block = payload.build_payload();
 		if let Err(e) = sealed_block {
-			tracing::error!("Failed to build sealed block: {:?}", e);
+			error!("Failed to build sealed block: {:?}", e);
 			return ControlFlow::Break(payload);
 		}
 		let sealed_block = sealed_block.expect("sealed block is ok");

@@ -100,7 +100,7 @@ impl Step<Flashblocks> for PublishFlashblock {
 		if self.flashblock_number.load(Ordering::Relaxed)
 			>= self.max_flashblocks.load(Ordering::Relaxed)
 		{
-			tracing::warn!("Stopping flashblocks production");
+			tracing::trace!("Stopping flashblocks production");
 			// We have reached maximum number of flashblocks, stop sending them
 			return ControlFlow::Break(payload);
 		}

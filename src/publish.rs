@@ -36,7 +36,7 @@ use {
 		accept_async,
 		tungstenite::{Message, Utf8Bytes},
 	},
-	tracing::{debug, trace, error},
+	tracing::{debug, error, trace},
 };
 
 /// Flashblocks pipeline step for publishing flashblocks to external

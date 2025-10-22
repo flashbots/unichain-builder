@@ -1,4 +1,3 @@
-use tracing::warn;
 use {
 	crate::{
 		args::{BuilderArgs, Cli, CliExt},
@@ -16,6 +15,7 @@ use {
 	},
 	reth_optimism_rpc::OpEthApiBuilder,
 	std::sync::{Arc, atomic::AtomicU64},
+	tracing::warn,
 };
 
 mod args;
@@ -156,14 +156,15 @@ fn build_flashblocks_pipeline(
 	)
 		.into_pipeline();
 
-	let flashblock_building_pipeline_steps =
-		if let Some(ref signer) = cli_args.builder_signer {
-			flashblock_building_pipeline_steps
-				.with_epilogue(BuilderEpilogue::with_signer(signer.clone().into()))
-		} else {
-			warn!("BUILDER_SECRET_KEY is not specified, skipping builder transactions");
-			flashblock_building_pipeline_steps
-		};
+	let flashblock_building_pipeline_steps = if let Some(ref signer) =
+		cli_args.builder_signer
+	{
+		flashblock_building_pipeline_steps
+			.with_epilogue(BuilderEpilogue::with_signer(signer.clone().into()))
+	} else {
+		warn!("BUILDER_SECRET_KEY is not specified, skipping builder transactions");
+		flashblock_building_pipeline_steps
+	};
 
 	let flashblock_building_pipeline = flashblock_building_pipeline_steps
 		.with_epilogue(PublishFlashblock::new(

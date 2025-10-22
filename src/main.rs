@@ -76,17 +76,11 @@ fn build_pipeline(
 	cli_args: &BuilderArgs,
 	pool: &OrderPool<Flashblocks>,
 ) -> eyre::Result<Pipeline<Flashblocks>> {
-	let mut pipeline = if cli_args.flashblocks_args.enabled() {
+	let pipeline = if cli_args.flashblocks_args.enabled() {
 		build_flashblocks_pipeline(cli_args, pool)?
 	} else {
 		build_classic_pipeline(cli_args, pool)
 	};
-
-	if let Some(ref signer) = cli_args.builder_signer {
-		let epilogue = BuilderEpilogue::with_signer(signer.clone().into());
-		let limiter = epilogue.limiter();
-		pipeline = pipeline.with_epilogue(epilogue).with_limits(limiter);
-	}
 
 	pool.attach_pipeline(&pipeline);
 

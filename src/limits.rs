@@ -90,7 +90,11 @@ impl FlashblockLimits {
 
 			let (target_flashblock, first_flashblock_interval) =
 				self.calculate_flashblocks(payload, remaining_time);
-			state.gas_per_flashblock = enclosing.gas_limit / target_flashblock;
+
+			state.gas_per_flashblock = enclosing
+				.gas_limit
+				.checked_div(target_flashblock)
+				.unwrap_or(enclosing.gas_limit);
 			state.current_block = Some(payload.block().number());
 			state.current_flashblock = 0;
 			state.first_flashblock_interval = first_flashblock_interval;

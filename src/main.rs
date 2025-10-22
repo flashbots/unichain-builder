@@ -81,13 +81,6 @@ fn build_pipeline(
 	} else {
 		build_classic_pipeline(cli_args, pool)
 	};
-
-	if let Some(ref signer) = cli_args.builder_signer {
-		let epilogue = BuilderEpilogue::with_signer(signer.clone().into());
-		let limiter = epilogue.limiter();
-		pipeline = pipeline.with_epilogue(epilogue).with_limits(limiter);
-	}
-
 	pool.attach_pipeline(&pipeline);
 
 	Ok(pipeline)

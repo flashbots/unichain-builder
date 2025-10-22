@@ -76,7 +76,7 @@ fn build_pipeline(
 	cli_args: &BuilderArgs,
 	pool: &OrderPool<Flashblocks>,
 ) -> eyre::Result<Pipeline<Flashblocks>> {
-	let mut pipeline = if cli_args.flashblocks_args.enabled() {
+	let pipeline = if cli_args.flashblocks_args.enabled() {
 		build_flashblocks_pipeline(cli_args, pool)?
 	} else {
 		build_classic_pipeline(cli_args, pool)

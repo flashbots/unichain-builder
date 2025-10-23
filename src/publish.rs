@@ -127,7 +127,7 @@ impl Step<Flashblocks> for PublishFlashblock {
 			state_root: sealed_block.block().state_root,
 			receipts_root: sealed_block.block().receipts_root,
 			logs_bloom: sealed_block.block().logs_bloom,
-			gas_used: payload.cumulative_gas_used(),
+			gas_used: sealed_block.block().gas_used,
 			block_hash: sealed_block.block().hash(),
 			transactions,
 			withdrawals: vec![],
@@ -160,7 +160,7 @@ impl Step<Flashblocks> for PublishFlashblock {
 		// Place a barrier after each published flashblock to freeze the contents
 		// of the payload up to this point, since this becomes a publicly committed
 		// state.
-		ControlFlow::Ok(payload.barrier())
+		ControlFlow::Ok(payload.barrier_with_tag("flashblock"))
 	}
 
 	/// Before the payload job starts prepare the contents of the
@@ -237,13 +237,10 @@ impl PublishFlashblock {
 		&self,
 		payload: &Checkpoint<Flashblocks>,
 	) -> Span<Flashblocks> {
-		if self.flashblock_number.load(Ordering::SeqCst) == 0 {
-			// first block, get all checkpoints, including sequencer txs
-			payload.history_sealed()
-		} else {
-			// subsequent block, get all checkpoints since last barrier
-			payload.history_staging()
-		}
+		// If we haven't published flashblock return whole history
+		payload
+			.history_since_last_tag("flashblock")
+			.unwrap_or(payload.history())
 	}
 
 	/// Called for each flashblock to capture metrics about the produced

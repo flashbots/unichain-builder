@@ -152,8 +152,10 @@ fn build_flashblocks_pipeline(
 	let flashblock_building_pipeline_steps = if let Some(ref signer) =
 		cli_args.builder_signer
 	{
-		flashblock_building_pipeline_steps
-			.with_epilogue(BuilderEpilogue::with_signer(signer.clone().into()).with_message(|block| format!("Block Number: {}", block.number())))
+		flashblock_building_pipeline_steps.with_epilogue(
+			BuilderEpilogue::with_signer(signer.clone().into())
+				.with_message(|block| format!("Block Number: {}", block.number())),
+		)
 	} else {
 		warn!("BUILDER_SECRET_KEY is not specified, skipping builder transactions");
 		flashblock_building_pipeline_steps

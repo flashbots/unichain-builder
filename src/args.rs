@@ -215,40 +215,15 @@ fn expand_path(s: &str) -> Result<PathBuf> {
 impl FlashblocksArgs {
 	/// Configures flashblocks for tests. Handles WS port assignment.
 	pub fn default_on_for_tests() -> Self {
-		use {
-			core::net::{Ipv4Addr, SocketAddrV4},
-			std::{
-				collections::HashSet,
-				net::TcpListener,
-				sync::{Mutex, OnceLock},
-			},
-		};
-
-		static RESERVED_PORTS: OnceLock<Mutex<HashSet<u16>>> = OnceLock::new();
-		let reserved = RESERVED_PORTS.get_or_init(|| Mutex::new(HashSet::new()));
-
-		let port = (12000..19000)
-			.find(|port| {
-				let addr = format!("0.0.0.0:{port}");
-				if let Ok(listener) = TcpListener::bind(&addr) {
-					drop(listener);
-					let mut set = reserved.lock().unwrap();
-					if set.contains(port) {
-						false
-					} else {
-						set.insert(*port);
-						true
-					}
-				} else {
-					false
-				}
-			})
-			.expect("No available ports found for test");
+		use core::net::{Ipv4Addr, SocketAddrV4};
 
 		Self {
 			interval: Duration::from_millis(250),
 			leeway_time: Duration::from_millis(75),
-			enabled: Some(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port).into()),
+			enabled: Some(
+				SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, Self::get_available_port())
+					.into(),
+			),
 			calculate_state_root: true,
 		}
 	}
@@ -257,41 +232,29 @@ impl FlashblocksArgs {
 		leeway_time: Duration,
 		interval: Duration,
 	) -> Self {
-		use {
-			core::net::{Ipv4Addr, SocketAddrV4},
-			std::{
-				collections::HashSet,
-				net::TcpListener,
-				sync::{Mutex, OnceLock},
-			},
-		};
-
-		static RESERVED_PORTS: OnceLock<Mutex<HashSet<u16>>> = OnceLock::new();
-		let reserved = RESERVED_PORTS.get_or_init(|| Mutex::new(HashSet::new()));
-
-		let port = (12000..19000)
-			.find(|port| {
-				let addr = format!("0.0.0.0:{port}");
-				if let Ok(listener) = TcpListener::bind(&addr) {
-					drop(listener);
-					let mut set = reserved.lock().unwrap();
-					if set.contains(port) {
-						false
-					} else {
-						set.insert(*port);
-						true
-					}
-				} else {
-					false
-				}
-			})
-			.expect("No available ports found for test");
+		use core::net::{Ipv4Addr, SocketAddrV4};
 
 		Self {
 			interval,
 			leeway_time,
-			enabled: Some(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port).into()),
+			enabled: Some(
+				SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, Self::get_available_port())
+					.into(),
+			),
 			calculate_state_root: true,
 		}
+	}
+
+	/// Gets an available port by first binding to port 0 -- instructing the OS to
+	/// find and assign one. Then the listener is dropped when this goes out of
+	/// scope, freeing the port for the next time this function is called.
+	fn get_available_port() -> u16 {
+		use std::net::TcpListener;
+
+		TcpListener::bind("127.0.0.1:0")
+			.expect("Failed to bind to random port")
+			.local_addr()
+			.expect("Failed to get local address")
+			.port()
 	}
 }

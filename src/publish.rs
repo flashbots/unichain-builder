@@ -105,7 +105,7 @@ impl Step<Flashblocks> for PublishFlashblock {
 			return ControlFlow::Break(payload);
 		}
 
-		let this_block_span = self.unpublished_payload(&payload);
+		let this_block_span = Self::unpublished_payload(&payload);
 		let transactions: Vec<_> = this_block_span
 			.transactions()
 			.map(|tx| tx.encoded_2718().into())
@@ -234,7 +234,6 @@ impl PublishFlashblock {
 	/// places a barrier after sequencer transactions and we want to broadcast
 	/// those transactions as well.
 	fn unpublished_payload(
-		&self,
 		payload: &Checkpoint<Flashblocks>,
 	) -> Span<Flashblocks> {
 		// If we haven't published flashblock return whole history

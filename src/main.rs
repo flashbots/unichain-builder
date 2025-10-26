@@ -4,6 +4,7 @@ use {
 		limits::FlashblockLimits,
 		publish::{PublishFlashblock, WebSocketSink},
 		rpc::TransactionStatusRpc,
+		stop::BreakAfterMaxFlashblocks,
 	},
 	platform::Flashblocks,
 	rblib::{pool::*, prelude::*, steps::*},
@@ -26,6 +27,7 @@ mod playground;
 mod primitives;
 mod publish;
 mod rpc;
+mod stop;
 
 #[cfg(test)]
 mod tests;
@@ -137,9 +139,8 @@ fn build_flashblocks_pipeline(
 
 	let ws = Arc::new(WebSocketSink::new(socket_address)?);
 
-	// TODO: this is super crutch until we have a way to break from outer payload
-	// in limits
 	let max_flashblocks = Arc::new(AtomicU64::new(0));
+	let current_flashblock = Arc::new(AtomicU64::new(0));
 
 	let flashblock_building_pipeline_steps = (
 		AppendOrders::from_pool(pool).with_ok_on_limit(),
@@ -161,17 +162,27 @@ fn build_flashblocks_pipeline(
 		flashblock_building_pipeline_steps
 	};
 
-	let flashblock_building_pipeline = flashblock_building_pipeline_steps
+	let build_single_flashblock = flashblock_building_pipeline_steps
 		.with_epilogue(PublishFlashblock::new(
 			&ws,
 			cli_args.flashblocks_args.calculate_state_root,
-			max_flashblocks.clone(),
 		))
-		.with_limits(FlashblockLimits::new(interval, max_flashblocks));
+		.with_limits(FlashblockLimits::new(
+			interval,
+			current_flashblock.clone(),
+			max_flashblocks.clone(),
+		));
+
+	let flashblock_building_pipeline = Pipeline::default()
+		.with_pipeline(Loop, build_single_flashblock)
+		.with_step(BreakAfterDeadline);
 
 	let block_building_pipeline = Pipeline::default()
-		.with_pipeline(Loop, flashblock_building_pipeline)
-		.with_step(BreakAfterDeadline);
+		.with_pipeline(Once, flashblock_building_pipeline)
+		.with_step(BreakAfterMaxFlashblocks::new(
+			current_flashblock,
+			max_flashblocks,
+		));
 
 	let pipeline = Pipeline::<Flashblocks>::named("flashblocks")
 		.with_prologue(OptimismPrologue)

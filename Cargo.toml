@@ -72,6 +72,7 @@ reth-provider = { git = "https://github.com/paradigmxyz/reth", tag = "v1.8.2" }
 
 # debug flag
 console-subscriber = { version = "0.4", optional = true }
+tracing-subscriber = "0.3.20"
 
 [dev-dependencies]
 rblib = { git = "https://github.com/flashbots/rblib", rev = "989b942d0facdde135f05bf66a376e30ce21ebc7", features = [

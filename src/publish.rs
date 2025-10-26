@@ -67,8 +67,6 @@ pub struct PublishFlashblock {
 	/// Timestamps for various stages of the flashblock publishing process. This
 	/// information is used to produce some of the metrics.
 	times: Times,
-
-	max_flashblocks: Arc<AtomicU64>,
 }
 
 impl PublishFlashblock {
@@ -76,7 +74,6 @@ impl PublishFlashblock {
 		sink: &Arc<WebSocketSink>,
 		// TODO: Will be implemented later
 		_calculate_state_root: bool,
-		max_flashblocks: Arc<AtomicU64>,
 	) -> Self {
 		Self {
 			sink: Arc::clone(sink),
@@ -84,7 +81,6 @@ impl PublishFlashblock {
 			block_base: RwLock::new(None),
 			metrics: Metrics::default(),
 			times: Times::default(),
-			max_flashblocks,
 		}
 	}
 }
@@ -95,16 +91,6 @@ impl Step<Flashblocks> for PublishFlashblock {
 		payload: Checkpoint<Flashblocks>,
 		ctx: StepContext<Flashblocks>,
 	) -> ControlFlow<Flashblocks> {
-		// TODO: this is super crutch until we have a way to break from outer
-		// payload in limits
-		if self.flashblock_number.load(Ordering::Relaxed)
-			>= self.max_flashblocks.load(Ordering::Relaxed)
-		{
-			trace!("Stopping flashblocks production");
-			// We have reached maximum number of flashblocks, stop sending them
-			return ControlFlow::Break(payload);
-		}
-
 		let this_block_span = Self::unpublished_payload(&payload);
 		let transactions: Vec<_> = this_block_span
 			.transactions()
@@ -120,8 +106,9 @@ impl Step<Flashblocks> for PublishFlashblock {
 			return ControlFlow::Break(payload);
 		}
 		let sealed_block = sealed_block.expect("sealed block is ok");
-		// TODO: .take() is a bit strange here, we will move out base flashblocks
-		// into it's own step
+		// We use .take() here because only the first flashblock should have
+		// the block_base.
+		// TODO: Consider moving this into its own step
 		let base = self.block_base.write().take();
 		let diff = ExecutionPayloadFlashblockDeltaV1 {
 			state_root: sealed_block.block().state_root,

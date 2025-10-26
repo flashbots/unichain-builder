@@ -37,16 +37,14 @@ pub struct FlashblockState {
 	current_block: Option<u64>,
 	/// Current flashblock number (0-indexed).
 	/// 0 indicates uninitialized state; call `progress_state()` to initialize.
-	current_flashblock: u64,
+	current_flashblock: Arc<AtomicU64>,
 	/// Duration for the first flashblock, which may be shortened to absorb
 	/// timing variance.
 	first_flashblock_interval: Duration,
 	/// Gas allocated per flashblock (total gas limit divided by flashblock
 	/// count).
 	gas_per_flashblock: u64,
-	/// Maximum flashblock count for this block (shared with publish step).
-	///
-	/// TODO: Change to `u64` once `PublishFlashblock` step no longer needs this.
+	/// Maximum flashblock count for this block.
 	max_flashblocks: Arc<AtomicU64>,
 }
 
@@ -54,12 +52,18 @@ impl FlashblockState {
 	fn current_gas_limit(&self) -> u64 {
 		self
 			.gas_per_flashblock
-			.saturating_mul(self.current_flashblock)
+			.saturating_mul(self.current_flashblock.load(Ordering::Relaxed))
 	}
 }
+
 impl FlashblockLimits {
-	pub fn new(interval: Duration, max_flashblocks: Arc<AtomicU64>) -> Self {
+	pub fn new(
+		interval: Duration,
+		current_flashblock: Arc<AtomicU64>,
+		max_flashblocks: Arc<AtomicU64>,
+	) -> Self {
 		let state = FlashblockState {
+			current_flashblock,
 			max_flashblocks,
 			..Default::default()
 		};
@@ -90,8 +94,8 @@ impl FlashblockLimits {
 			let payload_deadline = enclosing.deadline.expect(
 				"Flashblock limit require its enclosing scope to have a deadline",
 			);
-			let remaining_time =
-				payload_deadline.saturating_sub(payload.building_since().elapsed());
+			let elapsed = payload.building_since().elapsed();
+			let remaining_time = payload_deadline.saturating_sub(elapsed);
 
 			let (target_flashblock, first_flashblock_interval) =
 				self.calculate_flashblocks(payload, remaining_time);
@@ -101,7 +105,7 @@ impl FlashblockLimits {
 				.checked_div(target_flashblock)
 				.unwrap_or(enclosing.gas_limit);
 			state.current_block = Some(payload.block().number());
-			state.current_flashblock = 0;
+			state.current_flashblock.store(0, Ordering::Relaxed);
 			state.first_flashblock_interval = first_flashblock_interval;
 			state
 				.max_flashblocks
@@ -111,8 +115,11 @@ impl FlashblockLimits {
 
 	/// Advances to the next flashblock in the sequence.
 	pub fn progress_state(&self) {
-		let mut state = self.state.lock().expect("mutex is not poisoned");
-		state.current_flashblock += 1;
+		let state = self.state.lock().expect("mutex is not poisoned");
+		let next_flashblock = state.current_flashblock.load(Ordering::Relaxed) + 1;
+		state
+			.current_flashblock
+			.store(next_flashblock, Ordering::Relaxed);
 	}
 
 	/// Returns limits for the current flashblock.
@@ -123,22 +130,21 @@ impl FlashblockLimits {
 		let state = self.state.lock().expect("mutex is not poisoned");
 		// Check that state was progressed at least once
 		assert_ne!(
-			state.current_flashblock, 0,
+			state.current_flashblock.load(Ordering::Relaxed),
+			0,
 			"Get limits on uninitialized state"
 		);
-		// If we don't need to create new flashblocks - exit with immediate deadline
-		if state.current_flashblock > state.max_flashblocks.load(Ordering::Relaxed)
-		{
-			enclosing.with_deadline(Duration::from_millis(1))
+
+		// If self.current_flashblock == 1, we are building first flashblock
+		let deadline = if state.current_flashblock.load(Ordering::Relaxed) == 1 {
+			state.first_flashblock_interval
 		} else {
-			// If self.current_flashblock == 1, we are building first flashblock
-			let enclosing = if state.current_flashblock == 1 {
-				enclosing.with_deadline(state.first_flashblock_interval)
-			} else {
-				enclosing.with_deadline(self.interval)
-			};
-			enclosing.with_gas_limit(state.current_gas_limit())
-		}
+			self.interval
+		};
+
+		enclosing
+			.with_deadline(deadline)
+			.with_gas_limit(state.current_gas_limit())
 	}
 
 	/// Calculates the number of flashblocks and first flashblock interval for
@@ -175,33 +181,7 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 		// Update flashblock state
 		self.progress_state();
 
-		let limits = self.get_limits(enclosing);
-
-		let state = self.state.lock().expect("mutex is not poisoned");
-		if state.current_flashblock <= state.max_flashblocks.load(Ordering::Relaxed)
-		{
-			let gas_used = payload.cumulative_gas_used();
-			let remaining_gas = enclosing.gas_limit.saturating_sub(gas_used);
-			tracing::warn!(
-				">---> flashblocks: {}/{}, payload txs: {}, gas used: {} ({}%), \
-				 gas_remaining: {} ({}%), next_block_gas_limit: {} ({}%), gas per \
-				 block: {} ({}%), remaining_time: {}ms, gas_limit: {}",
-				state.current_flashblock,
-				state.max_flashblocks.load(Ordering::Relaxed),
-				payload.history().transactions().count(),
-				gas_used,
-				(gas_used * 100 / enclosing.gas_limit),
-				remaining_gas,
-				(remaining_gas * 100 / enclosing.gas_limit),
-				state.current_gas_limit(),
-				(state.current_gas_limit() * 100 / enclosing.gas_limit),
-				state.gas_per_flashblock,
-				(state.gas_per_flashblock * 100 / enclosing.gas_limit),
-				limits.deadline.expect("deadline is set").as_millis(),
-				limits.gas_limit,
-			);
-		}
-		limits
+		self.get_limits(enclosing)
 	}
 }
 
@@ -218,7 +198,7 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 ///
 /// # Arguments
 /// - `block_time`: The actual time available for block production
-/// - `remaining_time`: Payload deadline remaining (capped by block_time)
+/// - `remaining_time`: Payload deadline remaining (capped by `block_time`)
 /// - `flashblock_interval`: Target duration for each flashblock
 ///
 /// # Returns
@@ -432,9 +412,8 @@ mod tests {
 
 			assert!(
 				first_interval <= interval,
-				"First flashblock interval ({:?}) should not exceed interval ({:?})",
-				first_interval,
-				interval
+				"First flashblock interval ({first_interval:?}) should not exceed \
+				 interval ({interval:?})",
 			);
 		}
 	}
@@ -451,8 +430,9 @@ mod tests {
 			partition_time_into_flashblocks(block_time, remaining_time, interval);
 
 		let num_remaining_intervals = num_flashblocks.saturating_sub(1);
-		let total_time =
-			first_interval + interval.saturating_mul(num_remaining_intervals as u32);
+		let total_time = first_interval
+			+ interval
+				.saturating_mul(u32::try_from(num_remaining_intervals).unwrap());
 		assert_eq!(total_time, remaining_time);
 	}
 
@@ -488,11 +468,12 @@ mod tests {
 
 			let num_remaining_intervals = num_flashblocks.saturating_sub(1);
 			let total_time = first_interval
-				+ interval.saturating_mul(num_remaining_intervals as u32);
+				+ interval
+					.saturating_mul(u32::try_from(num_remaining_intervals).unwrap());
 			assert_eq!(
 				total_time, remaining_time,
-				"Time sum mismatch for interval={:?}, remaining_time={:?}",
-				interval, remaining_time
+				"Time sum mismatch for interval={interval:?}, \
+				 remaining_time={remaining_time:?}",
 			);
 		}
 	}

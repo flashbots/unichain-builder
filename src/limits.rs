@@ -49,6 +49,14 @@ pub struct FlashblockState {
 }
 
 impl FlashblockState {
+	fn current_flashblock(&self) -> u64 {
+		self.current_flashblock.load(Ordering::Relaxed)
+	}
+
+	fn max_flashblocks(&self) -> u64 {
+		self.max_flashblocks.load(Ordering::Relaxed)
+	}
+
 	fn current_gas_limit(&self) -> u64 {
 		self
 			.gas_per_flashblock
@@ -116,10 +124,7 @@ impl FlashblockLimits {
 	/// Advances to the next flashblock in the sequence.
 	pub fn progress_state(&self) {
 		let state = self.state.lock().expect("mutex is not poisoned");
-		let next_flashblock = state.current_flashblock.load(Ordering::Relaxed) + 1;
-		state
-			.current_flashblock
-			.store(next_flashblock, Ordering::Relaxed);
+		state.current_flashblock.fetch_add(1, Ordering::Relaxed);
 	}
 
 	/// Returns limits for the current flashblock.
@@ -130,13 +135,13 @@ impl FlashblockLimits {
 		let state = self.state.lock().expect("mutex is not poisoned");
 		// Check that state was progressed at least once
 		assert_ne!(
-			state.current_flashblock.load(Ordering::Relaxed),
+			state.current_flashblock(),
 			0,
 			"Get limits on uninitialized state"
 		);
 
 		// If self.current_flashblock == 1, we are building first flashblock
-		let deadline = if state.current_flashblock.load(Ordering::Relaxed) == 1 {
+		let deadline = if state.current_flashblock() == 1 {
 			state.first_flashblock_interval
 		} else {
 			self.interval
@@ -181,7 +186,33 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 		// Update flashblock state
 		self.progress_state();
 
-		self.get_limits(enclosing)
+		let limits = self.get_limits(enclosing);
+
+		let state = self.state.lock().expect("mutex is not poisoned");
+		if state.current_flashblock() <= state.max_flashblocks() {
+			let gas_used = payload.cumulative_gas_used();
+			let remaining_gas = enclosing.gas_limit.saturating_sub(gas_used);
+			tracing::info!(
+				">---> flashblocks: {}/{}, payload txs: {}, gas used: {} ({}%), \
+				 gas_remaining: {} ({}%), next_block_gas_limit: {} ({}%), gas per \
+				 block: {} ({}%), remaining_time: {}ms, gas_limit: {}",
+				state.current_flashblock(),
+				state.max_flashblocks(),
+				payload.history().transactions().count(),
+				gas_used,
+				(gas_used * 100 / enclosing.gas_limit),
+				remaining_gas,
+				(remaining_gas * 100 / enclosing.gas_limit),
+				state.current_gas_limit(),
+				(state.current_gas_limit() * 100 / enclosing.gas_limit),
+				state.gas_per_flashblock,
+				(state.gas_per_flashblock * 100 / enclosing.gas_limit),
+				limits.deadline.expect("deadline is set").as_millis(),
+				limits.gas_limit
+			);
+		}
+
+		limits
 	}
 }
 

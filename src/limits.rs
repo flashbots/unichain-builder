@@ -511,4 +511,23 @@ mod tests {
 		assert_eq!(first_interval, Duration::from_millis(6));
 		assert_eq!(num_flashblocks, 143);
 	}
+
+	// ============================================================================
+	// Zero remaining time -- This happens when FCU arrives after the deadline
+	// ============================================================================
+
+	#[test]
+	fn zero_time_left() {
+		// We should get zero flashblocks since there's no time left
+		let block_time = Duration::from_secs(2);
+		let remaining_time = Duration::from_millis(0);
+		let interval = Duration::from_millis(200);
+
+		let (num_flashblocks, first_interval) =
+			partition_time_into_flashblocks(block_time, remaining_time, interval);
+
+		// 0 / 200 = 0 with remainder 0
+		assert_eq!(first_interval, Duration::from_millis(200));
+		assert_eq!(num_flashblocks, 0);
+	}
 }

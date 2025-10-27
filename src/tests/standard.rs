@@ -77,7 +77,7 @@ async fn blocks_have_builder_tx() -> eyre::Result<()> {
 	assert_eq!(builder_tx.nonce(), 0);
 	assert_eq!(builder_tx.value(), U256::ZERO);
 	assert_eq!(builder_tx.to(), Some(Address::ZERO));
-	assert_eq!(builder_tx.input(), "flashbots rblib block #1".as_bytes());
+	assert_eq!(builder_tx.input(), "Block Number: 1".as_bytes());
 	assert_eq!(builder_tx.from(), FundedAccounts::signer(0).address());
 
 	Ok(())

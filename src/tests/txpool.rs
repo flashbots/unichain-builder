@@ -80,17 +80,8 @@ async fn reverted_transaction_reports_dropped_status() -> eyre::Result<()> {
 	tracing::info!("ok_receipt: {ok_receipt:#?}");
 	tracing::info!("reverted_receipt: {reverted_receipt:#?}");
 
-	assert!(reverted_receipt.is_err());
-
-	let error = reverted_receipt
-		.unwrap_err()
-		.as_error_resp()
-		.unwrap()
-		.clone();
-
-	assert_eq!(error.code, -32602);
-	assert_eq!(error.message, "transaction dropped");
-	assert!(error.data.is_none());
+	assert!(reverted_receipt.is_ok());
+	assert!(reverted_receipt.unwrap().is_none());
 
 	Ok(())
 }

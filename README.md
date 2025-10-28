@@ -114,7 +114,7 @@ docker compose up
 
 Open `http://localhost:3000` in your browser to navigate to Grafana (note that the default credentials are `admin` for username and password), then:
 
-1. Add a new Prometheus data source that points to `http://localhost:9090`
+1. Add a new Prometheus data source that points to `http://prometheus:9090`
 2. Create a new dashboard by importing the `grafana/classic.json` file from this repo.
 
 #### 4. Generate spam transactions

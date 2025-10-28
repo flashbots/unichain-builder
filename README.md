@@ -33,7 +33,7 @@ cargo install --git https://github.com/flashbots/contender --locked
 
 #### 4. Configure Grafana and Prometheus
 
-Create the following `yaml` files that will spin up `grafana` and `prometheus` servers:
+Create the following `yaml` files (in any directory) that will spin up `grafana` and `prometheus` servers:
 
 $\quad$ **4.a `docker-compose.yml`**
 
@@ -112,7 +112,7 @@ Go to the directory where files from setup step 4 were created and run
 docker compose up
 ```
 
-Open `http://localhost:3000` in your browser to navigate to Grafana, then:
+Open `http://localhost:3000` in your browser to navigate to Grafana (note that the default credentials are `admin` for username and password), then:
 
 1. Add a new Prometheus data source that points to `http://prometheus:9090`
 2. Create a new dashboard by importing the `grafana/classic.json` file from this repo.

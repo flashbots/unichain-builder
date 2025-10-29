@@ -1,25 +1,16 @@
 use {
+	crate::state::FlashblockNumber,
 	rblib::prelude::{Checkpoint, ControlFlow, Platform, Step, StepContext},
-	std::sync::{
-		Arc,
-		atomic::{AtomicU64, Ordering},
-	},
+	std::sync::Arc,
 };
 
 pub struct BreakAfterMaxFlashblocks {
-	current_flashblock: Arc<AtomicU64>,
-	max_flashblocks: Arc<AtomicU64>,
+	flashblock_number: Arc<FlashblockNumber>,
 }
 
 impl BreakAfterMaxFlashblocks {
-	pub fn new(
-		current_flashblock: Arc<AtomicU64>,
-		max_flashblocks: Arc<AtomicU64>,
-	) -> Self {
-		Self {
-			current_flashblock,
-			max_flashblocks,
-		}
+	pub fn new(flashblock_number: Arc<FlashblockNumber>) -> Self {
+		Self { flashblock_number }
 	}
 }
 
@@ -29,9 +20,7 @@ impl<P: Platform> Step<P> for BreakAfterMaxFlashblocks {
 		payload: Checkpoint<P>,
 		_: StepContext<P>,
 	) -> ControlFlow<P> {
-		if self.current_flashblock.load(Ordering::Relaxed)
-			> self.max_flashblocks.load(Ordering::Relaxed)
-		{
+		if !self.flashblock_number.in_bounds() {
 			ControlFlow::Break(payload)
 		} else {
 			ControlFlow::Ok(payload)

@@ -4,6 +4,7 @@ use {
 		limits::FlashblockLimits,
 		publish::{PublishFlashblock, WebSocketSink},
 		rpc::TransactionStatusRpc,
+		state::FlashblockNumber,
 		stop::BreakAfterMaxFlashblocks,
 	},
 	platform::Flashblocks,
@@ -15,7 +16,7 @@ use {
 		OpNode,
 	},
 	reth_optimism_rpc::OpEthApiBuilder,
-	std::sync::{Arc, atomic::AtomicU64},
+	std::sync::Arc,
 	tracing::warn,
 };
 
@@ -27,6 +28,7 @@ mod playground;
 mod primitives;
 mod publish;
 mod rpc;
+mod state;
 mod stop;
 
 #[cfg(test)]
@@ -139,9 +141,6 @@ fn build_flashblocks_pipeline(
 
 	let ws = Arc::new(WebSocketSink::new(socket_address)?);
 
-	let max_flashblocks = Arc::new(AtomicU64::new(0));
-	let current_flashblock = Arc::new(AtomicU64::new(0));
-
 	let flashblock_building_pipeline_steps = (
 		AppendOrders::from_pool(pool).with_ok_on_limit(),
 		OrderByPriorityFee::default(),
@@ -162,16 +161,17 @@ fn build_flashblocks_pipeline(
 		flashblock_building_pipeline_steps
 	};
 
+	// Multiple steps need to access flashblock number state, so we need to
+	// initialize it outside
+	let flashblock_number = Arc::new(FlashblockNumber::new());
+
 	let build_single_flashblock = flashblock_building_pipeline_steps
 		.with_epilogue(PublishFlashblock::new(
-			&ws,
+			ws.clone(),
+			flashblock_number.clone(),
 			cli_args.flashblocks_args.calculate_state_root,
 		))
-		.with_limits(FlashblockLimits::new(
-			interval,
-			current_flashblock.clone(),
-			max_flashblocks.clone(),
-		));
+		.with_limits(FlashblockLimits::new(interval, flashblock_number.clone()));
 
 	let flashblock_building_pipeline = Pipeline::default()
 		.with_pipeline(Loop, build_single_flashblock)
@@ -179,10 +179,7 @@ fn build_flashblocks_pipeline(
 
 	let block_building_pipeline = Pipeline::default()
 		.with_pipeline(Once, flashblock_building_pipeline)
-		.with_step(BreakAfterMaxFlashblocks::new(
-			current_flashblock,
-			max_flashblocks,
-		));
+		.with_step(BreakAfterMaxFlashblocks::new(flashblock_number));
 
 	let pipeline = Pipeline::<Flashblocks>::named("flashblocks")
 		.with_prologue(OptimismPrologue)

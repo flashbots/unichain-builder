@@ -165,25 +165,31 @@ fn build_flashblocks_pipeline(
 	// initialize it outside
 	let flashblock_number = Arc::new(FlashblockNumber::new());
 
-	let build_single_flashblock = flashblock_building_pipeline_steps
-		.with_epilogue(PublishFlashblock::new(
-			ws.clone(),
-			flashblock_number.clone(),
-			cli_args.flashblocks_args.calculate_state_root,
-		))
-		.with_limits(FlashblockLimits::new(interval, flashblock_number.clone()));
-
-	let flashblock_building_pipeline = Pipeline::default()
-		.with_pipeline(Loop, build_single_flashblock)
-		.with_step(BreakAfterDeadline);
-
-	let block_building_pipeline = Pipeline::default()
-		.with_pipeline(Once, flashblock_building_pipeline)
-		.with_step(BreakAfterMaxFlashblocks::new(flashblock_number));
-
 	let pipeline = Pipeline::<Flashblocks>::named("flashblocks")
 		.with_prologue(OptimismPrologue)
-		.with_pipeline(Loop, block_building_pipeline)
+		.with_pipeline(
+			Loop,
+			Pipeline::default()
+				.with_pipeline(
+					Once,
+					Pipeline::default()
+						.with_pipeline(
+							Loop,
+							flashblock_building_pipeline_steps
+								.with_epilogue(PublishFlashblock::new(
+									ws.clone(),
+									flashblock_number.clone(),
+									cli_args.flashblocks_args.calculate_state_root,
+								))
+								.with_limits(FlashblockLimits::new(
+									interval,
+									flashblock_number.clone(),
+								)),
+						)
+						.with_step(BreakAfterDeadline),
+				)
+				.with_step(BreakAfterMaxFlashblocks::new(flashblock_number)),
+		)
 		.with_limits(Scaled::default().deadline(total_building_time));
 	ws.watch_shutdown(&pipeline);
 

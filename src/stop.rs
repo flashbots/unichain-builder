@@ -20,10 +20,10 @@ impl<P: Platform> Step<P> for BreakAfterMaxFlashblocks {
 		payload: Checkpoint<P>,
 		_: StepContext<P>,
 	) -> ControlFlow<P> {
-		if !self.flashblock_number.in_bounds() {
-			ControlFlow::Break(payload)
-		} else {
+		if self.flashblock_number.in_bounds() {
 			ControlFlow::Ok(payload)
+		} else {
+			ControlFlow::Break(payload)
 		}
 	}
 }

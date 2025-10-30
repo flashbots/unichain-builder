@@ -39,7 +39,7 @@ impl FlashblockNumber {
 	pub fn set_target_flashblocks(&self, target_flashblock: u64) {
 		self
 			.target_flashblocks
-			.store(target_flashblock, Ordering::Relaxed)
+			.store(target_flashblock, Ordering::Relaxed);
 	}
 
 	pub fn reset_current_flashblock(&self) -> u64 {

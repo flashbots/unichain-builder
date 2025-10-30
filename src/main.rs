@@ -4,6 +4,8 @@ use {
 		limits::FlashblockLimits,
 		publish::{PublishFlashblock, WebSocketSink},
 		rpc::TransactionStatusRpc,
+		state::FlashblockNumber,
+		stop::BreakAfterMaxFlashblocks,
 	},
 	platform::Flashblocks,
 	rblib::{pool::*, prelude::*, steps::*},
@@ -14,7 +16,7 @@ use {
 		OpNode,
 	},
 	reth_optimism_rpc::OpEthApiBuilder,
-	std::sync::{Arc, atomic::AtomicU64},
+	std::sync::Arc,
 	tracing::warn,
 };
 
@@ -26,6 +28,8 @@ mod playground;
 mod primitives;
 mod publish;
 mod rpc;
+mod state;
+mod stop;
 
 #[cfg(test)]
 mod tests;
@@ -137,10 +141,6 @@ fn build_flashblocks_pipeline(
 
 	let ws = Arc::new(WebSocketSink::new(socket_address)?);
 
-	// TODO: this is super crutch until we have a way to break from outer payload
-	// in limits
-	let max_flashblocks = Arc::new(AtomicU64::new(0));
-
 	let flashblock_building_pipeline_steps = (
 		AppendOrders::from_pool(pool).with_ok_on_limit(),
 		OrderByPriorityFee::default(),
@@ -161,21 +161,35 @@ fn build_flashblocks_pipeline(
 		flashblock_building_pipeline_steps
 	};
 
-	let flashblock_building_pipeline = flashblock_building_pipeline_steps
-		.with_epilogue(PublishFlashblock::new(
-			&ws,
-			cli_args.flashblocks_args.calculate_state_root,
-			max_flashblocks.clone(),
-		))
-		.with_limits(FlashblockLimits::new(interval, max_flashblocks));
-
-	let block_building_pipeline = Pipeline::default()
-		.with_pipeline(Loop, flashblock_building_pipeline)
-		.with_step(BreakAfterDeadline);
+	// Multiple steps need to access flashblock number state, so we need to
+	// initialize it outside
+	let flashblock_number = Arc::new(FlashblockNumber::new());
 
 	let pipeline = Pipeline::<Flashblocks>::named("flashblocks")
 		.with_prologue(OptimismPrologue)
-		.with_pipeline(Loop, block_building_pipeline)
+		.with_pipeline(
+			Loop,
+			Pipeline::default()
+				.with_pipeline(
+					Once,
+					Pipeline::default()
+						.with_pipeline(
+							Loop,
+							flashblock_building_pipeline_steps
+								.with_epilogue(PublishFlashblock::new(
+									ws.clone(),
+									flashblock_number.clone(),
+									cli_args.flashblocks_args.calculate_state_root,
+								))
+								.with_limits(FlashblockLimits::new(
+									interval,
+									flashblock_number.clone(),
+								)),
+						)
+						.with_step(BreakAfterDeadline),
+				)
+				.with_step(BreakAfterMaxFlashblocks::new(flashblock_number)),
+		)
 		.with_limits(Scaled::default().deadline(total_building_time));
 	ws.watch_shutdown(&pipeline);
 

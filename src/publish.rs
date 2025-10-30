@@ -10,12 +10,9 @@
 //!   building jobs.
 
 use {
-	crate::{Flashblocks, primitives::*},
+	crate::{Flashblocks, primitives::*, state::FlashblockNumber},
 	atomic_time::AtomicOptionInstant,
-	core::{
-		net::SocketAddr,
-		sync::atomic::{AtomicU64, Ordering},
-	},
+	core::{net::SocketAddr, sync::atomic::Ordering},
 	futures::{SinkExt, StreamExt},
 	parking_lot::RwLock,
 	rblib::{
@@ -36,7 +33,7 @@ use {
 		accept_async,
 		tungstenite::{Message, Utf8Bytes},
 	},
-	tracing::{debug, error, trace},
+	tracing::{debug, error, info, trace},
 };
 
 /// Flashblocks pipeline step for publishing flashblocks to external
@@ -53,8 +50,9 @@ pub struct PublishFlashblock {
 	/// subscribers.
 	sink: Arc<WebSocketSink>,
 
-	/// Keeps track of the current flashblock number within the payload job.
-	flashblock_number: AtomicU64,
+	/// Reference to the current flashblock number within the payload job.
+	/// Once we build a flashblock we increment this.
+	flashblock_number: Arc<FlashblockNumber>,
 
 	/// Set once at the begining of the payload job, captures immutable
 	/// information about the payload that is being built. This info is derived
@@ -67,24 +65,21 @@ pub struct PublishFlashblock {
 	/// Timestamps for various stages of the flashblock publishing process. This
 	/// information is used to produce some of the metrics.
 	times: Times,
-
-	max_flashblocks: Arc<AtomicU64>,
 }
 
 impl PublishFlashblock {
 	pub fn new(
-		sink: &Arc<WebSocketSink>,
+		sink: Arc<WebSocketSink>,
+		flashblock_number: Arc<FlashblockNumber>,
 		// TODO: Will be implemented later
 		_calculate_state_root: bool,
-		max_flashblocks: Arc<AtomicU64>,
 	) -> Self {
 		Self {
-			sink: Arc::clone(sink),
-			flashblock_number: AtomicU64::default(),
+			sink,
+			flashblock_number,
 			block_base: RwLock::new(None),
 			metrics: Metrics::default(),
 			times: Times::default(),
-			max_flashblocks,
 		}
 	}
 }
@@ -95,24 +90,11 @@ impl Step<Flashblocks> for PublishFlashblock {
 		payload: Checkpoint<Flashblocks>,
 		ctx: StepContext<Flashblocks>,
 	) -> ControlFlow<Flashblocks> {
-		// TODO: this is super crutch until we have a way to break from outer
-		// payload in limits
-		if self.flashblock_number.load(Ordering::Relaxed)
-			>= self.max_flashblocks.load(Ordering::Relaxed)
-		{
-			trace!("Stopping flashblocks production");
-			// We have reached maximum number of flashblocks, stop sending them
-			return ControlFlow::Break(payload);
-		}
-
-		let this_block_span = self.unpublished_payload(&payload);
+		let this_block_span = Self::unpublished_payload(&payload);
 		let transactions: Vec<_> = this_block_span
 			.transactions()
 			.map(|tx| tx.encoded_2718().into())
 			.collect();
-
-		// increment flashblock number
-		let index = self.flashblock_number.fetch_add(1, Ordering::SeqCst);
 
 		let sealed_block = payload.build_payload();
 		if let Err(e) = sealed_block {
@@ -120,8 +102,9 @@ impl Step<Flashblocks> for PublishFlashblock {
 			return ControlFlow::Break(payload);
 		}
 		let sealed_block = sealed_block.expect("sealed block is ok");
-		// TODO: .take() is a bit strange here, we will move out base flashblocks
-		// into it's own step
+		// We use .take() here because only the first flashblock should have
+		// the block_base.
+		// TODO: Consider moving this into its own step
 		let base = self.block_base.write().take();
 		let diff = ExecutionPayloadFlashblockDeltaV1 {
 			state_root: sealed_block.block().state_root,
@@ -136,6 +119,9 @@ impl Step<Flashblocks> for PublishFlashblock {
 				.withdrawals_root()
 				.expect("withdrawals_root is present"),
 		};
+
+		// Increment flashblock number since we've built the flashblock
+		let index = self.flashblock_number.advance();
 
 		// Push the contents of the payload
 		if let Err(e) = self.sink.publish(&FlashblocksPayloadV1 {
@@ -152,6 +138,13 @@ impl Step<Flashblocks> for PublishFlashblock {
 			// is. it may be picked up by the next iteration.
 			return ControlFlow::Ok(payload);
 		}
+
+		info!(
+			"Published flashblock {}, num_transactions: {}, gas_used: {}",
+			index,
+			payload.history().transactions().count(),
+			payload.gas_used()
+		);
 
 		// block published to WS successfully
 		self.times.on_published_block(&self.metrics);
@@ -205,8 +198,8 @@ impl Step<Flashblocks> for PublishFlashblock {
 	) -> Result<(), PayloadBuilderError> {
 		self.times.on_job_ended(&self.metrics);
 
-		// reset flashblocks block counter
-		let count = self.flashblock_number.swap(0, Ordering::SeqCst);
+		// Reset current flashblock number since we're done with the whole block
+		let count = self.flashblock_number.reset_current_flashblock();
 		self.metrics.blocks_per_payload_job.record(count as f64);
 		*self.block_base.write() = None;
 
@@ -234,7 +227,6 @@ impl PublishFlashblock {
 	/// places a barrier after sequencer transactions and we want to broadcast
 	/// those transactions as well.
 	fn unpublished_payload(
-		&self,
 		payload: &Checkpoint<Flashblocks>,
 	) -> Span<Flashblocks> {
 		// If we haven't published flashblock return whole history

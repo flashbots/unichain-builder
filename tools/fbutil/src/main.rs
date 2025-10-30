@@ -20,7 +20,7 @@ pub struct Cli {
 	#[arg(
 		long,
 		short,
-		default_value = "ws://localhost:10111",
+		default_value = "ws://localhost:1111",
 		env = "WEBSOCKET_URL"
 	)]
 	ws: Url,

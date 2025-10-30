@@ -118,14 +118,22 @@ impl Observations {
 	/// The returned flashblocks will be returned in the same order in which they
 	/// were observed.
 	pub fn by_block_number(&self, block_number: u64) -> Vec<ObservedFlashblock> {
-		self
+		// Only the base flashblock contains the block number
+		let base_flashblock = self
 			.iter()
-			.filter(|fb| {
+			.find(|fb| {
 				fb.block
 					.base
 					.as_ref()
 					.is_some_and(|b| b.block_number == block_number)
 			})
+			.unwrap_or_else(|| {
+				panic!("no base flashblock found for block {block_number}")
+			});
+
+		self
+			.iter()
+			.filter(|fb| fb.payload_id == base_flashblock.payload_id)
 			.sorted_by_cached_key(|fb| fb.at) // sort by observation time
 			.collect()
 	}

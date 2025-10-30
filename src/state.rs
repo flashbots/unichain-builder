@@ -27,6 +27,11 @@ impl FlashblockNumber {
 		self.target_flashblocks.load(Ordering::Relaxed)
 	}
 
+	/// Returns current flashblock in 0-index format
+	pub fn index(&self) -> u64 {
+		self.current_flashblock.load(Ordering::Relaxed).saturating_sub(1)
+	}
+
 	pub fn advance(&self) -> u64 {
 		self.current_flashblock.fetch_add(1, Ordering::Relaxed)
 	}

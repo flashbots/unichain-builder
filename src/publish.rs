@@ -120,8 +120,10 @@ impl Step<Flashblocks> for PublishFlashblock {
 				.expect("withdrawals_root is present"),
 		};
 
+		// Get 0-index to use in flashblock
+		let index = self.flashblock_number.index();
 		// Increment flashblock number since we've built the flashblock
-		let index = self.flashblock_number.advance();
+		self.flashblock_number.advance();
 
 		// Push the contents of the payload
 		if let Err(e) = self.sink.publish(&FlashblocksPayloadV1 {

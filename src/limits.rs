@@ -98,7 +98,9 @@ impl FlashblockLimits {
 			state.current_block = Some(payload.block().number());
 			state.first_flashblock_interval = first_flashblock_interval;
 			state.flashblock_number.reset_current_flashblock();
-			state.flashblock_number.set_target_flashblocks(target_flashblock);
+			state
+				.flashblock_number
+				.set_target_flashblocks(target_flashblock);
 		}
 	}
 

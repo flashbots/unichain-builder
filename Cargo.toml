@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    ".", # The main rblib library
+    ".",            # The main rblib library
     "tools/fbutil",
 ]
 resolver = "2"
@@ -34,7 +34,7 @@ jemalloc = ["rblib/jemalloc"]
 debug = ["tokio/full", "tokio/tracing", "dep:console-subscriber"]
 
 [dependencies]
-rblib = { git = "https://github.com/flashbots/rblib", rev = "198cbe65e59f7467c756d5ba6422155c98402291" }
+rblib = { git = "https://github.com/flashbots/rblib", rev = "b0e1ba3cfba5e190479e6dbcc95889422f0444ad" }
 
 futures = "0.3"
 tokio = "1.46"
@@ -44,9 +44,11 @@ eyre = "0.6"
 moka = "0.12"
 tracing = "0.1"
 clap = { version = "4.4", features = ["derive", "env", "string"] }
+reqwest = "0.12.24"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9.33"
+itertools = "0.14.0"
 
 url = "2.5.2"
 rand = "0.9"
@@ -75,7 +77,7 @@ console-subscriber = { version = "0.4", optional = true }
 tracing-subscriber = "0.3.20"
 
 [dev-dependencies]
-rblib = { git = "https://github.com/flashbots/rblib", rev = "198cbe65e59f7467c756d5ba6422155c98402291", features = [
+rblib = { git = "https://github.com/flashbots/rblib", rev = "b0e1ba3cfba5e190479e6dbcc95889422f0444ad", features = [
     "test-utils",
 ] }
 

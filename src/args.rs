@@ -1,17 +1,17 @@
 //! Command line interface extensions for the Flashblocks builder.
 
 use {
-	crate::playground::PlaygroundOptions,
+	crate::{
+		flashtestations::FlashtestationsArgs,
+		playground::PlaygroundOptions,
+		signer::BuilderSigner,
+	},
 	clap::{CommandFactory, FromArgMatches, Parser},
 	core::{net::SocketAddr, time::Duration},
-	derive_more::{Deref, From, FromStr, Into},
 	eyre::{Result, eyre},
-	rblib::{
-		alloy::signers::local::PrivateKeySigner,
-		reth::optimism::{
-			cli::{Cli as OpCli, chainspec::OpChainSpecParser, commands::Commands},
-			node::args::RollupArgs,
-		},
+	rblib::reth::optimism::{
+		cli::{Cli as OpCli, chainspec::OpChainSpecParser, commands::Commands},
+		node::args::RollupArgs,
 	},
 	std::path::PathBuf,
 };
@@ -50,6 +50,9 @@ pub struct BuilderArgs {
 
 	#[command(flatten)]
 	pub flashblocks_args: FlashblocksArgs,
+
+	#[command(flatten)]
+	pub flashtestations: FlashtestationsArgs,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, clap::Args)]
@@ -117,20 +120,6 @@ impl FlashblocksArgs {
 		self.enabled
 	}
 }
-
-/// This type is used to store the builder's secret key for signing the last
-/// transaction in the block.
-#[derive(Debug, Clone, Deref, FromStr, Into, From)]
-pub struct BuilderSigner {
-	signer: PrivateKeySigner,
-}
-
-impl PartialEq for BuilderSigner {
-	fn eq(&self, other: &Self) -> bool {
-		self.signer.address() == other.signer.address()
-	}
-}
-impl Eq for BuilderSigner {}
 
 /// This trait is used to extend Reth's CLI with additional functionality that
 /// are specific to the OP builder, such as populating default values for CLI

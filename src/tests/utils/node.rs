@@ -26,24 +26,10 @@ use {
 };
 
 impl Flashblocks {
-	pub async fn test_node_with_cli_args(
+	async fn test_node_with_cli_args(
 		cli_args: BuilderArgs,
 	) -> eyre::Result<LocalNode<Flashblocks, OptimismConsensusDriver>> {
 		Flashblocks::create_test_node_with_args(Pipeline::default(), cli_args).await
-	}
-
-	pub async fn test_node()
-	-> eyre::Result<LocalNode<Flashblocks, OptimismConsensusDriver>> {
-		Flashblocks::test_node_with_cli_args(BuilderArgs::default()).await
-	}
-
-	pub async fn test_node_with_builder_signer()
-	-> eyre::Result<LocalNode<Flashblocks, OptimismConsensusDriver>> {
-		Flashblocks::test_node_with_cli_args(BuilderArgs {
-			builder_signer: Some(FundedAccounts::signer(0).into()),
-			..Default::default()
-		})
-		.await
 	}
 
 	/// Creates a new flashblocks enabled test node and returns the assigned
@@ -53,13 +39,13 @@ impl Flashblocks {
 	/// WebSocket.
 	///
 	/// Flashblocks tests have block times of 2s.
-	pub async fn test_node_with_flashblocks_on()
+	pub async fn test_node()
 	-> eyre::Result<(LocalNode<Flashblocks, OptimismConsensusDriver>, SocketAddr)>
 	{
 		let flashblocks_args = FlashblocksArgs::default_on_for_tests();
 
 		#[allow(clippy::missing_panics_doc)]
-		let ws_addr = flashblocks_args.ws_address().expect("default on");
+		let ws_addr = flashblocks_args.ws_address;
 
 		let mut node = Flashblocks::test_node_with_cli_args(BuilderArgs {
 			flashblocks_args,
@@ -72,8 +58,51 @@ impl Flashblocks {
 		Ok((node, ws_addr))
 	}
 
-	// The same as test_node_with_flashblocks_on, but with a custom leeway time
-	pub async fn test_node_with_flashblocks_on_and_custom_leeway_time_and_interval(
+	// The same as test_node, but with a `FundedAccounts::signer(0)` as the
+	// builder's signer
+	pub async fn test_node_with_builder_signer()
+	-> eyre::Result<(LocalNode<Flashblocks, OptimismConsensusDriver>, SocketAddr)>
+	{
+		let flashblocks_args = FlashblocksArgs::default_on_for_tests();
+
+		#[allow(clippy::missing_panics_doc)]
+		let ws_addr = flashblocks_args.ws_address;
+
+		let mut node = Flashblocks::test_node_with_cli_args(BuilderArgs {
+			flashblocks_args,
+			builder_signer: Some(FundedAccounts::signer(0).into()),
+			..Default::default()
+		})
+		.await?;
+
+		node.set_block_time(Duration::from_secs(2));
+
+		Ok((node, ws_addr))
+	}
+
+	// The same as test_node, but with revert protection turned off
+	pub async fn test_node_with_revert_protection_off()
+	-> eyre::Result<(LocalNode<Flashblocks, OptimismConsensusDriver>, SocketAddr)>
+	{
+		let flashblocks_args = FlashblocksArgs::default_on_for_tests();
+
+		#[allow(clippy::missing_panics_doc)]
+		let ws_addr = flashblocks_args.ws_address;
+
+		let mut node = Flashblocks::test_node_with_cli_args(BuilderArgs {
+			flashblocks_args,
+			revert_protection: false,
+			..Default::default()
+		})
+		.await?;
+
+		node.set_block_time(Duration::from_secs(2));
+
+		Ok((node, ws_addr))
+	}
+
+	// The same as test_node, but with a custom leeway time
+	pub async fn test_node_with_custom_leeway_time_and_interval(
 		leeway_time: Duration,
 		interval: Duration,
 	) -> eyre::Result<(LocalNode<Flashblocks, OptimismConsensusDriver>, SocketAddr)>
@@ -85,7 +114,7 @@ impl Flashblocks {
 			);
 
 		#[allow(clippy::missing_panics_doc)]
-		let ws_addr = flashblocks_args.ws_address().expect("default on");
+		let ws_addr = flashblocks_args.ws_address;
 
 		let mut node = Flashblocks::test_node_with_cli_args(BuilderArgs {
 			flashblocks_args,

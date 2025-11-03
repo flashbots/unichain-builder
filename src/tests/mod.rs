@@ -1,5 +1,5 @@
 use {
-	crate::{args::BuilderArgs, bundle::FlashblocksBundle},
+	crate::bundle::FlashblocksBundle,
 	rand::{Rng, rng},
 	rblib::{
 		alloy::{

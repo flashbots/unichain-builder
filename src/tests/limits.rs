@@ -31,7 +31,7 @@ async fn run_test(
 	const TXS_PER_BLOCK: usize = 60;
 
 	let (node, ws_addr) =
-		Flashblocks::test_node_with_flashblocks_on_and_custom_leeway_time_and_interval(
+		Flashblocks::test_node_with_custom_leeway_time_and_interval(
 			leeway_time,
 			flashblocks_interval,
 		)

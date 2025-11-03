@@ -14,7 +14,7 @@ use {
 
 #[tokio::test]
 async fn one_valid_tx_included() -> eyre::Result<()> {
-	let node = Flashblocks::test_node().await?;
+	let (node, _) = Flashblocks::test_node().await?;
 
 	let bundle_with_one_tx = random_valid_bundle(1);
 	let bundle_hash = bundle_with_one_tx.hash();
@@ -40,7 +40,7 @@ async fn one_valid_tx_included() -> eyre::Result<()> {
 
 #[tokio::test]
 async fn two_valid_txs_included() -> eyre::Result<()> {
-	let node = Flashblocks::test_node().await?;
+	let (node, _) = Flashblocks::test_node().await?;
 
 	let bundle_with_two_txs = random_valid_bundle(2);
 	let bundle_hash = bundle_with_two_txs.hash();
@@ -67,7 +67,7 @@ async fn two_valid_txs_included() -> eyre::Result<()> {
 
 #[tokio::test]
 async fn min_block_timestamp_constraint() -> eyre::Result<()> {
-	let node = Flashblocks::test_node().await?;
+	let (node, _) = Flashblocks::test_node().await?;
 
 	let mut bundle_with_one_tx = random_valid_bundle(1);
 	bundle_with_one_tx.min_block_number = Some(3);

@@ -210,7 +210,7 @@ impl Step<Flashblocks> for PublishFlashblock {
 
 	/// Called during pipeline instantiation before any payload job is served.
 	/// - Configure metrics scope.
-	fn setup(
+	async fn setup(
 		&mut self,
 		ctx: InitContext<Flashblocks>,
 	) -> Result<(), PayloadBuilderError> {

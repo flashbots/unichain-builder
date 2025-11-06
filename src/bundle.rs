@@ -78,6 +78,29 @@ pub struct FlashblocksBundle {
 	/// Note: Not recommended because this is subject to the builder node clock.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub max_timestamp: Option<u64>,
+
+	/// Minimum flashblock number at which this bundle can be included.
+	///
+	/// Flashblocks are preconfirmations that are built incrementally. This
+	/// field along with `maxFlashblockNumber` allows bundles to be scheduled
+	/// for more precise execution.
+	#[serde(
+		default,
+		with = "alloy_serde::quantity::opt",
+		skip_serializing_if = "Option::is_none"
+	)]
+	pub min_flashblock_number: Option<u64>,
+
+	/// Maximum flashblock number at which this bundle can be included.
+	///
+	/// Similar to `minFlashblockNumber`, this sets an upper bound on which
+	/// flashblocks can include this bundle.
+	#[serde(
+		default,
+		with = "alloy_serde::quantity::opt",
+		skip_serializing_if = "Option::is_none"
+	)]
+	pub max_flashblock_number: Option<u64>,
 }
 
 impl FlashblocksBundle {
@@ -93,6 +116,8 @@ impl FlashblocksBundle {
 			max_block_number: None,
 			min_timestamp: None,
 			max_timestamp: None,
+			min_flashblock_number: None,
+			max_flashblock_number: None,
 		}
 	}
 }

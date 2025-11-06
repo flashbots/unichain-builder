@@ -141,8 +141,14 @@ fn build_flashblocks_pipeline(
 
 	let ws = Arc::new(WebSocketSink::new(socket_address)?);
 
+	// Multiple steps need to access flashblock number state, so we need to
+	// initialize it outside
+	let flashblock_number = Arc::new(FlashblockNumber::new());
+
 	let flashblock_building_pipeline_steps = (
-		AppendOrders::from_pool(pool).with_ok_on_limit(),
+		AppendOrders::from_pool(pool)
+			.with_ok_on_limit()
+			.with_filter(flashblock_number.clone().bundle_filter()),
 		OrderByPriorityFee::default(),
 		RemoveRevertedTransactions::default(),
 		BreakAfterDeadline,
@@ -160,10 +166,6 @@ fn build_flashblocks_pipeline(
 		warn!("BUILDER_SECRET_KEY is not specified, skipping builder transactions");
 		flashblock_building_pipeline_steps
 	};
-
-	// Multiple steps need to access flashblock number state, so we need to
-	// initialize it outside
-	let flashblock_number = Arc::new(FlashblockNumber::new());
 
 	let pipeline = Pipeline::<Flashblocks>::named("flashblocks")
 		.with_prologue(OptimismPrologue)

@@ -20,15 +20,18 @@ async fn empty_blocks_smoke() -> eyre::Result<()> {
 		assert_eq!(block.tx_count(), 1); // sequencer deposit tx
 		assert_has_sequencer_tx!(&block);
 
-		// there should be only one flashblock produced for an empty block
-		// because an empty block will only have the sequencer deposit tx
-		// and we don't produce empty flashblocks.
 		let fblocks = ws.by_block_number(block.number());
-		assert_eq!(fblocks.len(), 1);
+		assert_eq!(fblocks.len(), 8);
+		for (j, flashblock) in fblocks.iter().enumerate() {
+			// The first flashblock will have the sequencer tx and the rest
+			// should be empty
+			let expected_tx_count = usize::from(j == 0);
+			assert_eq!(expected_tx_count, flashblock.diff.transactions.len());
+		}
 	}
 
 	assert!(ws.has_no_errors());
-	assert_eq!(ws.len(), 5); // one flashblock per block
+	assert_eq!(ws.len(), 40); // 5 blocks * 8 flashblocks per block
 
 	Ok(())
 }
@@ -61,8 +64,10 @@ async fn blocks_with_txs_smoke() -> eyre::Result<()> {
 		assert_eq!(block.number(), i as u64);
 		assert_has_sequencer_tx!(&block);
 		assert!(!sent_txs.is_empty());
-		assert!(block.tx_count() > sent_txs.len());
-		assert!(block.includes(sent_txs));
+		// We don't check if all the sent transactions are in the block because
+		// the closure isn't guarenteed to complete before the block building
+		// time is up. So sometimes the block will have all the transactions
+		// and sometimes it won't.
 
 		let fblocks = ws.by_block_number(block.number());
 

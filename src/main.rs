@@ -101,7 +101,7 @@ fn build_classic_pipeline(
 	cli_args: &BuilderArgs,
 	pool: &OrderPool<Flashblocks>,
 ) -> Pipeline<Flashblocks> {
-	if cli_args.revert_protection {
+	let pipeline = if cli_args.revert_protection {
 		Pipeline::<Flashblocks>::named("classic")
 			.with_prologue(OptimismPrologue)
 			.with_pipeline(
@@ -119,6 +119,16 @@ fn build_classic_pipeline(
 				Loop,
 				(AppendOrders::from_pool(pool), OrderByPriorityFee::default()),
 			)
+	};
+
+	if let Some(ref signer) = cli_args.builder_signer {
+		pipeline.with_epilogue(
+			BuilderEpilogue::with_signer(signer.clone().into())
+				.with_message(|block| format!("Block Number: {}", block.number())),
+		)
+	} else {
+		warn!("BUILDER_SECRET_KEY is not specified, skipping builder transactions");
+		pipeline
 	}
 }
 

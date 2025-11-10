@@ -1,6 +1,7 @@
 use {
 	crate::{
 		args::{BuilderArgs, Cli, CliExt},
+		flashtestations::FlashtestationsPrologue,
 		limits::FlashblockLimits,
 		publish::{PublishFlashblock, WebSocketSink},
 		rpc::TransactionStatusRpc,
@@ -22,12 +23,14 @@ use {
 
 mod args;
 mod bundle;
+mod flashtestations;
 mod limits;
 mod platform;
 mod playground;
 mod primitives;
 mod publish;
 mod rpc;
+mod signer;
 mod state;
 mod stop;
 
@@ -167,6 +170,10 @@ fn build_flashblocks_pipeline(
 
 	let pipeline = Pipeline::<Flashblocks>::named("flashblocks")
 		.with_prologue(OptimismPrologue)
+		.with_prologue(FlashtestationsPrologue::try_new(
+			cli_args.flashtestations.clone(),
+			cli_args.builder_signer.clone(),
+		)?)
 		.with_pipeline(
 			Loop,
 			Pipeline::default()

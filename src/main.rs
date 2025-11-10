@@ -96,13 +96,22 @@ fn build_pipeline(
 
 	let ws = Arc::new(WebSocketSink::new(cli_args.flashblocks_args.ws_address)?);
 
-	let flashblock_building_pipeline_steps = (
-		AppendOrders::from_pool(pool).with_ok_on_limit(),
-		OrderByPriorityFee::default(),
-		RemoveRevertedTransactions::default(),
-		BreakAfterDeadline,
-	)
-		.into_pipeline();
+	let flashblock_building_pipeline_steps = if cli_args.revert_protection {
+		(
+			AppendOrders::from_pool(pool).with_ok_on_limit(),
+			OrderByPriorityFee::default(),
+			RemoveRevertedTransactions::default(),
+			BreakAfterDeadline,
+		)
+			.into_pipeline()
+	} else {
+		(
+			AppendOrders::from_pool(pool).with_ok_on_limit(),
+			OrderByPriorityFee::default(),
+			BreakAfterDeadline,
+		)
+			.into_pipeline()
+	};
 
 	let flashblock_building_pipeline_steps = if let Some(ref signer) =
 		cli_args.builder_signer
@@ -121,8 +130,8 @@ fn build_pipeline(
 	let flashblock_number = Arc::new(FlashblockNumber::new());
 
 	let pipeline = Pipeline::<Flashblocks>::named("flashblocks")
-		.with_prologue(OptimismPrologue)
-		.with_prologue(FlashtestationsPrologue::try_new(
+		.with_step(OptimismPrologue)
+		.with_step(FlashtestationsPrologue::try_new(
 			cli_args.flashtestations.clone(),
 			cli_args.builder_signer.clone(),
 		)?)

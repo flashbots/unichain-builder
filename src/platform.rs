@@ -14,7 +14,7 @@ use {
 /// the `Flashblocks` platform.
 ///
 /// See [`rblib::Platform`] for more details on platform definitions.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Flashblocks;
 
 impl Platform for Flashblocks {

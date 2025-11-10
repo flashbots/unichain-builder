@@ -1,8 +1,7 @@
 use {
 	crate::{platform::Flashblocks, tests::assert_has_sequencer_tx},
-	itertools::Itertools,
 	rblib::{
-		alloy::primitives::U256,
+		alloy::{consensus::Transaction, primitives::U256},
 		test_utils::{BlockResponseExt, TransactionRequestExt},
 	},
 	std::time::Duration,
@@ -17,10 +16,9 @@ use {
 async fn txs_ordered_by_priority_fee() -> eyre::Result<()> {
 	let (node, _) = Flashblocks::test_node().await?;
 
-	let tx_tips = vec![100, 300, 200, 500, 400];
-	let mut sent_txs = Vec::new();
+	let tx_tips = [100, 300, 200, 500, 400];
 	for (i, tip) in tx_tips.iter().enumerate() {
-		let tx = node
+		let _tx = node
 			.send_tx(
 				node
 					.build_tx()
@@ -30,33 +28,30 @@ async fn txs_ordered_by_priority_fee() -> eyre::Result<()> {
 					.max_priority_fee_per_gas(*tip),
 			)
 			.await?;
-		sent_txs.push(*tx.tx_hash());
 	}
 
 	// We need to wait to build the block
 	tokio::time::sleep(Duration::from_millis(100)).await;
-
-	let sorted_sent_txs: Vec<_> = tx_tips
-		.into_iter()
-		.zip(sent_txs)
-		.inspect(|(tip, hash)| println!("tip: {tip}, hash: {hash}"))
-		.sorted_by_key(|tuple| tuple.0)
-		.rev()
-		.map(|(_tip, hash)| hash)
-		.collect();
 
 	let block = node.next_block().await?;
 	assert_eq!(block.number(), 1);
 	assert_has_sequencer_tx!(&block);
 	assert_eq!(block.tx_count(), 6); // sequencer deposit tx + the 5 we sent
 
-	let hashes: Vec<_> = block
+	let base_fee = block.header.base_fee_per_gas.unwrap();
+
+	let tx_tips: Vec<_> = block
 		.transactions
 		.into_transactions()
-		.map(|tx| tx.inner.inner.tx_hash())
+		.skip(1) // skip the deposit transaction
+		.map(|tx| tx.effective_tip_per_gas(base_fee))
+		.rev() // we want to check descending order
 		.collect();
 
-	assert_eq!(sorted_sent_txs, hashes[1..]);
+	assert!(
+		tx_tips.is_sorted(),
+		"Transactions not ordered by fee priority"
+	);
 
 	Ok(())
 }

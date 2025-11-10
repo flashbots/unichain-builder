@@ -83,64 +83,6 @@ fn build_pipeline(
 	cli_args: &BuilderArgs,
 	pool: &OrderPool<Flashblocks>,
 ) -> eyre::Result<Pipeline<Flashblocks>> {
-	let pipeline = if cli_args.flashblocks_args.enabled() {
-		build_flashblocks_pipeline(cli_args, pool)?
-	} else {
-		build_classic_pipeline(cli_args, pool)
-	};
-	pool.attach_pipeline(&pipeline);
-
-	Ok(pipeline)
-}
-
-/// Classic block builder
-///
-/// Block building strategy that builds blocks using the classic approach by
-/// producing one block payload per CL payload job.
-fn build_classic_pipeline(
-	cli_args: &BuilderArgs,
-	pool: &OrderPool<Flashblocks>,
-) -> Pipeline<Flashblocks> {
-	let pipeline = if cli_args.revert_protection {
-		Pipeline::<Flashblocks>::named("classic")
-			.with_prologue(OptimismPrologue)
-			.with_pipeline(
-				Loop,
-				(
-					AppendOrders::from_pool(pool),
-					OrderByPriorityFee::default(),
-					RemoveRevertedTransactions::default(),
-				),
-			)
-	} else {
-		Pipeline::<Flashblocks>::named("classic")
-			.with_prologue(OptimismPrologue)
-			.with_pipeline(
-				Loop,
-				(AppendOrders::from_pool(pool), OrderByPriorityFee::default()),
-			)
-	};
-
-	if let Some(ref signer) = cli_args.builder_signer {
-		pipeline.with_epilogue(
-			BuilderEpilogue::with_signer(signer.clone().into())
-				.with_message(|block| format!("Block Number: {}", block.number())),
-		)
-	} else {
-		warn!("BUILDER_SECRET_KEY is not specified, skipping builder transactions");
-		pipeline
-	}
-}
-
-fn build_flashblocks_pipeline(
-	cli_args: &BuilderArgs,
-	pool: &OrderPool<Flashblocks>,
-) -> eyre::Result<Pipeline<Flashblocks>> {
-	let socket_address = cli_args
-		.flashblocks_args
-		.ws_address()
-		.expect("WebSocket address must be set for Flashblocks");
-
 	// how often a flashblock is published
 	let interval = cli_args.flashblocks_args.interval;
 
@@ -152,7 +94,7 @@ fn build_flashblocks_pipeline(
 	// building and the payload job deadline that is given by the CL.
 	let total_building_time = Minus(leeway_time);
 
-	let ws = Arc::new(WebSocketSink::new(socket_address)?);
+	let ws = Arc::new(WebSocketSink::new(cli_args.flashblocks_args.ws_address)?);
 
 	let flashblock_building_pipeline_steps = (
 		AppendOrders::from_pool(pool).with_ok_on_limit(),
@@ -208,7 +150,9 @@ fn build_flashblocks_pipeline(
 				.with_step(BreakAfterMaxFlashblocks::new(flashblock_number)),
 		)
 		.with_limits(Scaled::default().deadline(total_building_time));
+
 	ws.watch_shutdown(&pipeline);
+	pool.attach_pipeline(&pipeline);
 
 	Ok(pipeline)
 }

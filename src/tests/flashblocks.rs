@@ -10,7 +10,7 @@ use {
 
 #[tokio::test]
 async fn empty_blocks_smoke() -> eyre::Result<()> {
-	let (node, ws_addr) = Flashblocks::test_node_with_flashblocks_on().await?;
+	let (node, ws_addr) = Flashblocks::test_node().await?;
 	let ws = WebSocketObserver::new(ws_addr).await?;
 
 	for i in 1..=5 {
@@ -41,7 +41,7 @@ async fn blocks_with_txs_smoke() -> eyre::Result<()> {
 	const BLOCKS: usize = 5;
 	const TXS_PER_BLOCK: usize = 60;
 
-	let (node, ws_addr) = Flashblocks::test_node_with_flashblocks_on().await?;
+	let (node, ws_addr) = Flashblocks::test_node().await?;
 	let ws = WebSocketObserver::new(ws_addr).await?;
 
 	for i in 1..=BLOCKS {
@@ -103,7 +103,7 @@ async fn flashblock_timings_2000ms_block_time_0ms_leeway_time()
 	const TXS_PER_BLOCK: usize = 60;
 
 	let (node, ws_addr) =
-		Flashblocks::test_node_with_flashblocks_on_and_custom_leeway_time_and_interval(
+		Flashblocks::test_node_with_custom_leeway_time_and_interval(
 			Duration::from_millis(0),
 			Duration::from_millis(250),
 		)
@@ -154,7 +154,7 @@ async fn flashblock_timings_2000ms_block_time_75ms_leeway_time()
 -> eyre::Result<()> {
 	const TXS_PER_BLOCK: usize = 60;
 
-	let (node, ws_addr) = Flashblocks::test_node_with_flashblocks_on().await?;
+	let (node, ws_addr) = Flashblocks::test_node().await?;
 	let ws = WebSocketObserver::new(ws_addr).await?;
 
 	// Create a block at the top of the timestamp second
@@ -202,7 +202,7 @@ async fn flashblock_timings_2000ms_block_time_500ms_leeway_time()
 	const TXS_PER_BLOCK: usize = 60;
 
 	let (node, ws_addr) =
-		Flashblocks::test_node_with_flashblocks_on_and_custom_leeway_time_and_interval(
+		Flashblocks::test_node_with_custom_leeway_time_and_interval(
 			Duration::from_millis(500),
 			Duration::from_millis(500),
 		)

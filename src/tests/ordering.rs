@@ -15,7 +15,7 @@ use {
 /// flashblock, but not the entire block.
 #[tokio::test]
 async fn txs_ordered_by_priority_fee() -> eyre::Result<()> {
-	let node = Flashblocks::test_node().await?;
+	let (node, _) = Flashblocks::test_node().await?;
 
 	let tx_tips = vec![100, 300, 200, 500, 400];
 	let mut sent_txs = Vec::new();

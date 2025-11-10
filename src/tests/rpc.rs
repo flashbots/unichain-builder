@@ -29,7 +29,7 @@ macro_rules! assert_ineligible {
 /// should be rejected by the RPC before making it to the orders pool.
 #[tokio::test]
 async fn max_block_number_in_past() -> eyre::Result<()> {
-	let node = Flashblocks::test_node().await?;
+	let (node, _) = Flashblocks::test_node().await?;
 
 	let block = node.next_block().await?;
 	assert_eq!(block.number(), 1);
@@ -63,7 +63,7 @@ async fn max_block_number_in_past() -> eyre::Result<()> {
 #[tokio::test]
 async fn max_block_timestamp_in_past() -> eyre::Result<()> {
 	// node at genesis, block 0
-	let node = Flashblocks::test_node().await?;
+	let (node, _) = Flashblocks::test_node().await?;
 	let genesis_timestamp = node.config().chain.genesis_timestamp();
 	let mut bundle = random_valid_bundle(1);
 	bundle.max_timestamp = Some(genesis_timestamp.saturating_sub(1));
@@ -81,7 +81,7 @@ async fn max_block_timestamp_in_past() -> eyre::Result<()> {
 
 #[tokio::test]
 async fn empty_bundle_rejected_by_rpc() -> eyre::Result<()> {
-	let node = Flashblocks::test_node().await?;
+	let (node, _) = Flashblocks::test_node().await?;
 
 	let empty_bundle = FlashblocksBundle::with_transactions(vec![]);
 	let result = BundlesApiClient::<Flashblocks>::send_bundle(

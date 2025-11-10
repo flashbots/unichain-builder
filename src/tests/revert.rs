@@ -19,7 +19,7 @@ use {
 
 #[tokio::test]
 async fn critical_reverted_tx_not_included() -> eyre::Result<()> {
-	let node = Flashblocks::test_node().await?;
+	let (node, _) = Flashblocks::test_node().await?;
 
 	let bundle_without_reverts = random_valid_bundle(1);
 	let bundle_with_reverts = random_bundle_with_reverts(0, 1);
@@ -54,7 +54,7 @@ async fn critical_reverted_tx_not_included() -> eyre::Result<()> {
 
 #[tokio::test]
 async fn fallible_reverted_included() -> eyre::Result<()> {
-	let node = Flashblocks::test_node().await?;
+	let (node, _) = Flashblocks::test_node().await?;
 
 	// create a bundle with one valid tx
 	let bundle_without_reverts = random_valid_bundle(1);
@@ -96,7 +96,7 @@ async fn fallible_reverted_included() -> eyre::Result<()> {
 
 #[tokio::test]
 async fn fallible_optional_reverted_not_included() -> eyre::Result<()> {
-	let node = Flashblocks::test_node().await?;
+	let (node, _) = Flashblocks::test_node().await?;
 
 	// create a bundle with one valid and one reverting tx
 	let mut bundle_with_reverts = random_bundle_with_reverts(1, 1);
@@ -127,11 +127,7 @@ async fn fallible_optional_reverted_not_included() -> eyre::Result<()> {
 
 #[tokio::test]
 async fn when_disabled_reverted_txs_are_included() -> eyre::Result<()> {
-	let node = Flashblocks::test_node_with_cli_args(BuilderArgs {
-		revert_protection: false,
-		..Default::default()
-	})
-	.await?;
+	let (node, _) = Flashblocks::test_node_with_revert_protection_off().await?;
 
 	// create a bundle with one valid and one reverting tx
 	let mut bundle_with_reverts = random_bundle_with_reverts(1, 1);

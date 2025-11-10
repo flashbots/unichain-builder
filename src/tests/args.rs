@@ -56,28 +56,3 @@ fn test_leeway_time_invalid_format() {
 		);
 	}
 }
-
-#[test]
-fn test_leeway_time_with_flashblocks_enabled() {
-	let args = Cli::try_parse_from([
-		"flashblocks",
-		"node",
-		"--flashblocks.leeway-time",
-		"150ms",
-		"--flashblocks",
-		"127.0.0.1:8080",
-	])
-	.expect("Should parse successfully");
-
-	if let Commands::Node(node_command) = args.command {
-		let flashblocks_args = &node_command.ext.flashblocks_args;
-		assert_eq!(flashblocks_args.leeway_time, Duration::from_millis(150));
-		assert!(flashblocks_args.enabled());
-		assert_eq!(
-			flashblocks_args.ws_address().unwrap().to_string(),
-			"127.0.0.1:8080"
-		);
-	} else {
-		panic!("Expected Node command");
-	}
-}

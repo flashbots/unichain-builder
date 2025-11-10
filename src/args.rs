@@ -86,9 +86,9 @@ pub struct FlashblocksArgs {
     	name = "WS_ADDRESS",
 		env = "FLASHBLOCKS_WS_ADDRESS",
     	num_args = 0..=1,
-		default_missing_value = "0.0.0.0:10111"
+		default_value = "0.0.0.0:10111"
 	)]
-	enabled: Option<SocketAddr>,
+	pub ws_address: SocketAddr,
 
 	/// Should we calculate the state root for each flashblock
 	#[arg(
@@ -106,18 +106,6 @@ impl Default for BuilderArgs {
 			unreachable!()
 		};
 		node_command.ext
-	}
-}
-
-impl FlashblocksArgs {
-	/// Returns true if flashblocks are enabled.
-	pub fn enabled(&self) -> bool {
-		self.enabled.is_some()
-	}
-
-	/// Returns the WebSocket address for flashblocks publishing socket.
-	pub fn ws_address(&self) -> Option<SocketAddr> {
-		self.enabled
 	}
 }
 
@@ -209,10 +197,12 @@ impl FlashblocksArgs {
 		Self {
 			interval: Duration::from_millis(250),
 			leeway_time: Duration::from_millis(75),
-			enabled: Some(
-				SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, Self::get_available_port())
-					.into(),
-			),
+			ws_address: SocketAddrV4::new(
+				Ipv4Addr::UNSPECIFIED,
+				Self::get_available_port(),
+			)
+			.into(),
+
 			calculate_state_root: true,
 		}
 	}
@@ -226,10 +216,12 @@ impl FlashblocksArgs {
 		Self {
 			interval,
 			leeway_time,
-			enabled: Some(
-				SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, Self::get_available_port())
-					.into(),
-			),
+			ws_address: SocketAddrV4::new(
+				Ipv4Addr::UNSPECIFIED,
+				Self::get_available_port(),
+			)
+			.into(),
+
 			calculate_state_root: true,
 		}
 	}

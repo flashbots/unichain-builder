@@ -71,7 +71,7 @@ async fn blocks_have_builder_tx() -> eyre::Result<()> {
 	debug!("produced block: {block:#?}");
 
 	assert_eq!(block.number(), 1);
-	assert_eq!(block.tx_count(), 2); // sequencer deposit tx + builder tx
+	assert_eq!(block.tx_count(), 9); // sequencer deposit tx + 8 builder txs for each flashblock
 
 	let builder_tx = block.tx(1).unwrap();
 	assert_eq!(builder_tx.nonce(), 0);

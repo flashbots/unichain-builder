@@ -34,7 +34,7 @@ jemalloc = ["rblib/jemalloc"]
 debug = ["tokio/full", "tokio/tracing", "dep:console-subscriber"]
 
 [dependencies]
-rblib = { git = "https://github.com/flashbots/rblib", rev = "b0e1ba3cfba5e190479e6dbcc95889422f0444ad" }
+rblib = { git = "https://github.com/flashbots/rblib", rev = "66c5c15a8834a6f677bec0d6b34f54ffc7cdd4ff" }
 
 futures = "0.3"
 tokio = "1.46"
@@ -77,7 +77,7 @@ console-subscriber = { version = "0.4", optional = true }
 tracing-subscriber = "0.3.20"
 
 [dev-dependencies]
-rblib = { git = "https://github.com/flashbots/rblib", rev = "b0e1ba3cfba5e190479e6dbcc95889422f0444ad", features = [
+rblib = { git = "https://github.com/flashbots/rblib", rev = "66c5c15a8834a6f677bec0d6b34f54ffc7cdd4ff", features = [
     "test-utils",
 ] }
 

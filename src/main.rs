@@ -5,6 +5,7 @@ use {
 		limits::FlashblockLimits,
 		publish::{PublishFlashblock, WebSocketSink},
 		rpc::TransactionStatusRpc,
+		signer::BuilderSigner,
 		state::FlashblockNumber,
 		stop::BreakAfterMaxFlashblocks,
 	},
@@ -18,7 +19,6 @@ use {
 	},
 	reth_optimism_rpc::OpEthApiBuilder,
 	std::sync::Arc,
-	tracing::warn,
 };
 
 mod args;
@@ -96,54 +96,50 @@ fn build_pipeline(
 
 	let ws = Arc::new(WebSocketSink::new(cli_args.flashblocks_args.ws_address)?);
 
-	let flashblock_building_pipeline_steps = if cli_args.revert_protection {
-		(
-			AppendOrders::from_pool(pool).with_ok_on_limit(),
-			OrderByPriorityFee::default(),
-			RemoveRevertedTransactions::default(),
-			BreakAfterDeadline,
-		)
-			.into_pipeline()
-	} else {
-		(
-			AppendOrders::from_pool(pool).with_ok_on_limit(),
-			OrderByPriorityFee::default(),
-			BreakAfterDeadline,
-		)
-			.into_pipeline()
-	};
-
-	let flashblock_building_pipeline_steps = if let Some(ref signer) =
-		cli_args.builder_signer
-	{
-		flashblock_building_pipeline_steps.with_epilogue(
-			BuilderEpilogue::with_signer(signer.clone().into())
-				.with_message(|block| format!("Block Number: {}", block.number())),
-		)
-	} else {
-		warn!("BUILDER_SECRET_KEY is not specified, skipping builder transactions");
-		flashblock_building_pipeline_steps
-	};
+	// TODO: Think about a better way to conditionally add steps so we don't
+	// 		 have to default to a random signer.
+	let builder_signer = cli_args
+		.builder_signer
+		.clone()
+		.unwrap_or(BuilderSigner::random());
 
 	// Multiple steps need to access flashblock number state, so we need to
 	// initialize it outside
 	let flashblock_number = Arc::new(FlashblockNumber::new());
 
-	let pipeline = Pipeline::<Flashblocks>::named("flashblocks")
+	let pipeline = Pipeline::<Flashblocks>::named("top")
 		.with_step(OptimismPrologue)
-		.with_step(FlashtestationsPrologue::try_new(
-			cli_args.flashtestations.clone(),
-			cli_args.builder_signer.clone(),
-		)?)
+		.with_step_if(
+			cli_args.flashtestations.flashtestations_enabled
+				&& cli_args.builder_signer.is_some(),
+			FlashtestationsPrologue::try_new(
+				cli_args.flashtestations.clone(),
+				builder_signer.clone(),
+			)?,
+		)
 		.with_pipeline(
 			Loop,
-			Pipeline::default()
+			Pipeline::named("n_flashblocks")
 				.with_pipeline(
 					Once,
-					Pipeline::default()
+					Pipeline::named("single_flashblock")
 						.with_pipeline(
 							Loop,
-							flashblock_building_pipeline_steps
+							Pipeline::named("flashblock_steps")
+								.with_step(AppendOrders::from_pool(pool).with_ok_on_limit())
+								.with_step(OrderByPriorityFee::default())
+								.with_step_if(
+									cli_args.revert_protection,
+									RemoveRevertedTransactions::default(),
+								)
+								.with_step(BreakAfterDeadline)
+								.with_epilogue_if(
+									cli_args.builder_signer.is_some(),
+									BuilderEpilogue::with_signer(builder_signer.clone().into())
+										.with_message(|block| {
+											format!("Block Number: {}", block.number())
+										}),
+								)
 								.with_epilogue(PublishFlashblock::new(
 									ws.clone(),
 									flashblock_number.clone(),

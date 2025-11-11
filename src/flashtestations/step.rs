@@ -35,7 +35,7 @@ struct State {
 impl FlashtestationsPrologue {
 	pub fn try_new(
 		args: FlashtestationsArgs,
-		builder_key: Option<BuilderSigner>,
+		builder_key: BuilderSigner,
 	) -> eyre::Result<Self> {
 		if !args.flashtestations_enabled {
 			return Ok(Self {
@@ -44,10 +44,7 @@ impl FlashtestationsPrologue {
 			});
 		}
 
-		let manager = FlashtestationsManager::try_new(
-			args,
-			builder_key.context("builder key required for flashtestations")?,
-		)?;
+		let manager = FlashtestationsManager::try_new(args, builder_key)?;
 
 		Ok(Self {
 			manager: Some(manager),

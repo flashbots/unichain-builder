@@ -127,7 +127,8 @@ fn build_pipeline(
 							Loop,
 							Pipeline::named("flashblock_steps")
 								.with_step(AppendOrders::from_pool(pool).with_ok_on_limit())
-								.with_step(OrderByDestination::default())
+								.with_step_if(cli_args.global_storage_address.is_some(), OrderByDestinationAndPriorityFee::new(cli_args.global_storage_address.map(DestinationAndPriorityFeeScore::new).unwrap()))
+								.with_step_if(cli_args.global_storage_address.is_none(), OrderByPriorityFee::default())
 								.with_step_if(
 									cli_args.revert_protection,
 									RemoveRevertedTransactions::default(),

@@ -9,9 +9,12 @@ use {
 	clap::{CommandFactory, FromArgMatches, Parser},
 	core::{net::SocketAddr, time::Duration},
 	eyre::{Result, eyre},
-	rblib::reth::optimism::{
-		cli::{Cli as OpCli, chainspec::OpChainSpecParser, commands::Commands},
-		node::args::RollupArgs,
+	rblib::{
+		alloy::primitives::Address,
+		reth::optimism::{
+			cli::{Cli as OpCli, chainspec::OpChainSpecParser, commands::Commands},
+			node::args::RollupArgs,
+		},
 	},
 	std::path::PathBuf,
 };
@@ -47,6 +50,10 @@ pub struct BuilderArgs {
         env = "PLAYGROUND_DIR",
     )]
 	pub playground: Option<PathBuf>,
+
+	/// Global storage address for destination-based ordering
+	#[arg(long = "builder.global-storage-address", env = "GLOBAL_STORAGE_ADDRESS")]
+	pub global_storage_address: Option<Address>,
 
 	#[command(flatten)]
 	pub flashblocks_args: FlashblocksArgs,

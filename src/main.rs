@@ -127,7 +127,7 @@ fn build_pipeline(
 							Loop,
 							Pipeline::named("flashblock_steps")
 								.with_step(AppendOrders::from_pool(pool).with_ok_on_limit())
-								.with_step(OrderByPriorityFee::default())
+								.with_step(OrderByDestination::default())
 								.with_step_if(
 									cli_args.revert_protection,
 									RemoveRevertedTransactions::default(),

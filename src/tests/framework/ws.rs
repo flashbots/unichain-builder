@@ -7,7 +7,7 @@ use {
 	futures::{FutureExt, StreamExt},
 	itertools::Itertools,
 	orx_concurrent_vec::ConcurrentVec,
-	rblib::alloy::optimism::rpc_types_engine::OpFlashblockPayload,
+	rollup_boost_types::flashblocks::FlashblocksPayloadV1,
 	std::{sync::Arc, time::Instant},
 	tokio::{net::TcpStream, sync::oneshot, task::JoinHandle},
 	tokio_tungstenite::{
@@ -88,7 +88,7 @@ impl Deref for WebSocketObserver {
 #[derive(Clone, Debug, Deref)]
 pub struct ObservedFlashblock {
 	#[deref]
-	pub block: OpFlashblockPayload,
+	pub block: FlashblocksPayloadV1,
 	pub at: Instant,
 }
 
@@ -152,7 +152,7 @@ impl Observations {
 
 	fn record_message(&self, msg: Message) {
 		if let Message::Text(string) = &msg {
-			match serde_json::from_str::<OpFlashblockPayload>(string) {
+			match serde_json::from_str::<FlashblocksPayloadV1>(string) {
 				Ok(fb_payload) => self.record_flashblock(fb_payload),
 				Err(error) => {
 					self.errors.push(error.into());
@@ -163,13 +163,8 @@ impl Observations {
 		self.messages.push(msg);
 	}
 
-	fn record_flashblock(&self, payload: OpFlashblockPayload) {
-		debug!(
-			index = payload.index,
-			payload_id = ?payload.payload_id,
-			num_transactions = payload.diff.transactions.len(),
-			"Observed flashblock"
-		);
+	fn record_flashblock(&self, payload: FlashblocksPayloadV1) {
+		debug!("observed flashblock: {payload:#?}");
 		self.flashblocks.push(ObservedFlashblock {
 			block: payload,
 			at: Instant::now(),

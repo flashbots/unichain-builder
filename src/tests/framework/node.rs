@@ -16,7 +16,7 @@ use {
 		pool::*,
 		prelude::*,
 		reth::{
-			node::builder::rpc::BasicEngineValidatorBuilder,
+			builder::rpc::BasicEngineValidatorBuilder,
 			optimism::{
 				chainspec,
 				node::{OpEngineApiBuilder, OpEngineValidatorBuilder, OpNode},
@@ -45,8 +45,6 @@ impl Flashblocks {
 	-> eyre::Result<(LocalNode<Flashblocks, OptimismConsensusDriver>, SocketAddr)>
 	{
 		let flashblocks_args = FlashblocksArgs::default_on_for_tests();
-
-		#[allow(clippy::missing_panics_doc)]
 		let ws_addr = flashblocks_args.ws_address;
 
 		let mut node = Flashblocks::test_node_with_cli_args(BuilderArgs {
@@ -66,8 +64,6 @@ impl Flashblocks {
 	-> eyre::Result<(LocalNode<Flashblocks, OptimismConsensusDriver>, SocketAddr)>
 	{
 		let flashblocks_args = FlashblocksArgs::default_on_for_tests();
-
-		#[allow(clippy::missing_panics_doc)]
 		let ws_addr = flashblocks_args.ws_address;
 
 		let mut node = Flashblocks::test_node_with_cli_args(BuilderArgs {
@@ -87,8 +83,6 @@ impl Flashblocks {
 	-> eyre::Result<(LocalNode<Flashblocks, OptimismConsensusDriver>, SocketAddr)>
 	{
 		let flashblocks_args = FlashblocksArgs::default_on_for_tests();
-
-		#[allow(clippy::missing_panics_doc)]
 		let ws_addr = flashblocks_args.ws_address;
 
 		let mut node = Flashblocks::test_node_with_cli_args(BuilderArgs {
@@ -114,8 +108,6 @@ impl Flashblocks {
 				leeway_time,
 				interval,
 			);
-
-		#[allow(clippy::missing_panics_doc)]
 		let ws_addr = flashblocks_args.ws_address;
 
 		let mut node = Flashblocks::test_node_with_cli_args(BuilderArgs {

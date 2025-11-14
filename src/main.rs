@@ -19,6 +19,7 @@ use {
 		steps::*,
 	},
 	std::sync::Arc,
+	tracing::info,
 };
 
 mod args;
@@ -82,6 +83,7 @@ fn build_pipeline(
 	cli_args: &BuilderArgs,
 	pool: &OrderPool<Flashblocks>,
 ) -> eyre::Result<Pipeline<Flashblocks>> {
+	info!("ARGS: {cli_args:?}");
 	let flashblock_interval = cli_args.flashblocks_args.interval;
 
 	// time by which flashblocks will be delivered earlier to account for latency

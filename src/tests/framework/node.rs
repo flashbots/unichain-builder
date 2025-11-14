@@ -4,6 +4,7 @@ use {
 		build_pipeline,
 		platform::Flashblocks,
 		rpc::TransactionStatusRpc,
+		tests::framework::ws::WebSocketObserver,
 	},
 	core::{net::SocketAddr, time::Duration},
 	rblib::{
@@ -27,99 +28,67 @@ use {
 	std::time::{SystemTime, UNIX_EPOCH},
 };
 
-impl Flashblocks {
-	async fn test_node_with_cli_args(
-		cli_args: BuilderArgs,
-	) -> eyre::Result<LocalNode<Flashblocks, OptimismConsensusDriver>> {
-		Flashblocks::create_test_node_with_args(Pipeline::default(), cli_args).await
-	}
+pub struct Harness {
+	node: LocalNode<Flashblocks, OptimismConsensusDriver>,
+	ws_addr: SocketAddr,
+}
 
-	/// Creates a new flashblocks enabled test node and returns the assigned
-	/// socket address of the websocket.
-	///
-	/// Returns an instance of a local node and the socket address of the
-	/// WebSocket.
-	///
-	/// Flashblocks tests have block times of 2s.
-	pub async fn test_node()
-	-> eyre::Result<(LocalNode<Flashblocks, OptimismConsensusDriver>, SocketAddr)>
-	{
-		let flashblocks_args = FlashblocksArgs::default_on_for_tests();
+impl Harness {
+	pub async fn default() -> eyre::Result<Self> {
+		let flashblocks_args = FlashblocksArgs {
+			interval: Duration::from_millis(250),
+			leeway_time: Duration::from_millis(75),
+			ws_address: get_available_socket(),
+			calculate_state_root: true,
+		};
 		let ws_addr = flashblocks_args.ws_address;
 
-		let mut node = Flashblocks::test_node_with_cli_args(BuilderArgs {
-			flashblocks_args,
-			..Default::default()
-		})
+		let mut node = Flashblocks::create_test_node_with_args(
+			Pipeline::default(),
+			BuilderArgs {
+				flashblocks_args,
+				..Default::default()
+			},
+		)
 		.await?;
 
 		node.set_block_time(Duration::from_secs(2));
 
-		Ok((node, ws_addr))
+		Ok(Self { node, ws_addr })
 	}
 
-	// The same as test_node, but with a `FundedAccounts::signer(0)` as the
-	// builder's signer
-	pub async fn test_node_with_builder_signer()
-	-> eyre::Result<(LocalNode<Flashblocks, OptimismConsensusDriver>, SocketAddr)>
-	{
-		let flashblocks_args = FlashblocksArgs::default_on_for_tests();
-		let ws_addr = flashblocks_args.ws_address;
+	pub async fn try_new(mut args: BuilderArgs) -> eyre::Result<Self> {
+		let ws_addr = get_available_socket();
+		args.flashblocks_args.ws_address = ws_addr;
 
-		let mut node = Flashblocks::test_node_with_cli_args(BuilderArgs {
-			flashblocks_args,
-			builder_signer: Some(FundedAccounts::signer(0).into()),
-			..Default::default()
-		})
-		.await?;
+		let mut node =
+			Flashblocks::create_test_node_with_args(Pipeline::default(), args)
+				.await?;
 
 		node.set_block_time(Duration::from_secs(2));
 
-		Ok((node, ws_addr))
+		Ok(Self { node, ws_addr })
 	}
 
-	// The same as test_node, but with revert protection turned off
-	pub async fn test_node_with_revert_protection_off()
-	-> eyre::Result<(LocalNode<Flashblocks, OptimismConsensusDriver>, SocketAddr)>
-	{
-		let flashblocks_args = FlashblocksArgs::default_on_for_tests();
-		let ws_addr = flashblocks_args.ws_address;
-
-		let mut node = Flashblocks::test_node_with_cli_args(BuilderArgs {
-			flashblocks_args,
-			revert_protection: false,
-			..Default::default()
-		})
-		.await?;
-
-		node.set_block_time(Duration::from_secs(2));
-
-		Ok((node, ws_addr))
+	pub fn node(&self) -> &LocalNode<Flashblocks, OptimismConsensusDriver> {
+		&self.node
 	}
 
-	// The same as test_node, but with a custom leeway time
-	pub async fn test_node_with_custom_leeway_time_and_interval(
-		leeway_time: Duration,
-		interval: Duration,
-	) -> eyre::Result<(LocalNode<Flashblocks, OptimismConsensusDriver>, SocketAddr)>
-	{
-		let flashblocks_args =
-			FlashblocksArgs::default_on_custom_leeway_time_and_interval_for_tests(
-				leeway_time,
-				interval,
-			);
-		let ws_addr = flashblocks_args.ws_address;
-
-		let mut node = Flashblocks::test_node_with_cli_args(BuilderArgs {
-			flashblocks_args,
-			..Default::default()
-		})
-		.await?;
-
-		node.set_block_time(Duration::from_secs(2));
-
-		Ok((node, ws_addr))
+	pub async fn ws_observer(&self) -> eyre::Result<WebSocketObserver> {
+		WebSocketObserver::try_new(self.ws_addr).await
 	}
+}
+
+/// Gets an available socket by first binding to port 0 -- instructing the OS to
+/// find and assign one. Then the listener is dropped when this goes out of
+/// scope, freeing the port for the next time this function is called.
+fn get_available_socket() -> SocketAddr {
+	use std::net::TcpListener;
+
+	TcpListener::bind("127.0.0.1:0")
+		.expect("Failed to bind to random port")
+		.local_addr()
+		.expect("Failed to get local address")
 }
 
 pub trait LocalNodeFlashblocksExt {

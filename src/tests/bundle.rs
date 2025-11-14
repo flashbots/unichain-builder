@@ -1,10 +1,12 @@
 use {
 	crate::{
 		Flashblocks,
+		args::BuilderArgs,
 		bundle::FlashblocksBundle,
-		tests::assert_has_sequencer_tx,
+		tests::{Harness, assert_has_sequencer_tx},
 	},
 	jsonrpsee::core::ClientError,
+	macros::unichain_test,
 	rand::{Rng, rng},
 	rblib::{
 		alloy::{
@@ -139,9 +141,9 @@ pub fn random_bundle_with_reverts(
 	FlashblocksBundle::with_transactions(txs)
 }
 
-#[tokio::test]
-async fn empty_bundle_rejected() -> eyre::Result<()> {
-	let (node, _) = Flashblocks::test_node().await?;
+#[unichain_test]
+async fn empty_bundle_rejected(harness: Harness) -> eyre::Result<()> {
+	let node = harness.node();
 
 	let empty_bundle = FlashblocksBundle::with_transactions(vec![]);
 	let result = BundlesApiClient::<Flashblocks>::send_bundle(
@@ -157,9 +159,9 @@ async fn empty_bundle_rejected() -> eyre::Result<()> {
 
 /// This bundle should be rejected by because we only support bundles with one
 /// transaction
-#[tokio::test]
-async fn bundle_with_two_txs_rejected() -> eyre::Result<()> {
-	let (node, _) = Flashblocks::test_node().await?;
+#[unichain_test]
+async fn bundle_with_two_txs_rejected(harness: Harness) -> eyre::Result<()> {
+	let node = harness.node();
 
 	let bundle_with_two_txs = random_valid_bundle(2);
 
@@ -174,9 +176,9 @@ async fn bundle_with_two_txs_rejected() -> eyre::Result<()> {
 	Ok(())
 }
 
-#[tokio::test]
-async fn valid_tx_included() -> eyre::Result<()> {
-	let (node, _) = Flashblocks::test_node().await?;
+#[unichain_test]
+async fn valid_tx_included(harness: Harness) -> eyre::Result<()> {
+	let node = harness.node();
 
 	let bundle_with_one_tx = random_valid_bundle(1);
 	let bundle_hash = bundle_with_one_tx.hash();
@@ -199,9 +201,9 @@ async fn valid_tx_included() -> eyre::Result<()> {
 	Ok(())
 }
 
-#[tokio::test]
-async fn reverted_tx_not_included() -> eyre::Result<()> {
-	let (node, _) = Flashblocks::test_node().await?;
+#[unichain_test]
+async fn reverted_tx_not_included(harness: Harness) -> eyre::Result<()> {
+	let node = harness.node();
 
 	let bundle_with_reverts = random_bundle_with_reverts(0, 1);
 
@@ -223,9 +225,9 @@ async fn reverted_tx_not_included() -> eyre::Result<()> {
 
 /// Bundles that will never be eligible for inclusion in any future block
 /// should be rejected by the RPC before making it to the orders pool.
-#[tokio::test]
-async fn max_block_number_in_past() -> eyre::Result<()> {
-	let (node, _) = Flashblocks::test_node().await?;
+#[unichain_test]
+async fn max_block_number_in_past(harness: Harness) -> eyre::Result<()> {
+	let node = harness.node();
 
 	let block = node.next_block().await?;
 	assert_eq!(block.number(), 1);
@@ -249,10 +251,10 @@ async fn max_block_number_in_past() -> eyre::Result<()> {
 
 /// This bundle should be rejected because its `max_timestamp` is in the past
 /// and it will never be eligible for inclusion in any future block.
-#[tokio::test]
-async fn max_block_timestamp_in_past() -> eyre::Result<()> {
+#[unichain_test]
+async fn max_block_timestamp_in_past(harness: Harness) -> eyre::Result<()> {
 	// node at genesis, block 0
-	let (node, _) = Flashblocks::test_node().await?;
+	let node = harness.node();
 	let genesis_timestamp = node.config().chain.genesis_timestamp();
 	let mut bundle = random_valid_bundle(1);
 	bundle.max_timestamp = Some(genesis_timestamp.saturating_sub(1));
@@ -268,10 +270,12 @@ async fn max_block_timestamp_in_past() -> eyre::Result<()> {
 	Ok(())
 }
 
-#[tokio::test]
-async fn min_block_greater_than_max_block() -> eyre::Result<()> {
+#[unichain_test]
+async fn min_block_greater_than_max_block(
+	harness: Harness,
+) -> eyre::Result<()> {
 	// node at genesis, block 0
-	let (node, _) = Flashblocks::test_node().await?;
+	let node = harness.node();
 	let mut bundle = random_valid_bundle(1);
 	bundle.min_block_number = Some(2);
 	bundle.max_block_number = Some(1);
@@ -289,9 +293,9 @@ async fn min_block_greater_than_max_block() -> eyre::Result<()> {
 
 /// Test that a bundle with the `min_block_number` param set to a future block
 /// isn't included until that block.
-#[tokio::test]
-async fn min_block_number_in_future() -> eyre::Result<()> {
-	let (node, _) = Flashblocks::test_node().await?;
+#[unichain_test]
+async fn min_block_number_in_future(harness: Harness) -> eyre::Result<()> {
+	let node = harness.node();
 
 	let mut bundle_with_one_tx = random_valid_bundle(1);
 	bundle_with_one_tx.min_block_number = Some(2);
@@ -321,9 +325,14 @@ async fn min_block_number_in_future() -> eyre::Result<()> {
 	Ok(())
 }
 
-#[tokio::test]
-async fn when_disabled_reverted_txs_are_included() -> eyre::Result<()> {
-	let (node, _) = Flashblocks::test_node_with_revert_protection_off().await?;
+#[unichain_test(args = BuilderArgs {
+    revert_protection: false,
+    ..Default::default()
+})]
+async fn when_disabled_reverted_txs_are_included(
+	harness: Harness,
+) -> eyre::Result<()> {
+	let node = harness.node();
 
 	// create a bundle with one valid and one reverting tx
 	let mut bundle_with_reverts = random_bundle_with_reverts(0, 1);

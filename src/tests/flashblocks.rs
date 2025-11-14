@@ -3,15 +3,20 @@
 #![allow(clippy::large_futures)]
 
 use {
-	crate::{Flashblocks, tests::*},
+	crate::{
+		Flashblocks,
+		args::{BuilderArgs, FlashblocksArgs},
+		tests::*,
+	},
+	macros::unichain_test,
 	rblib::alloy::{eips::Decodable2718, network::BlockResponse},
 	std::time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-#[tokio::test]
-async fn empty_blocks_smoke() -> eyre::Result<()> {
-	let (node, ws_addr) = Flashblocks::test_node().await?;
-	let ws = WebSocketObserver::new(ws_addr).await?;
+#[unichain_test]
+async fn empty_blocks_smoke(harness: Harness) -> eyre::Result<()> {
+	let node = harness.node();
+	let ws = harness.ws_observer().await?;
 
 	for i in 1..=5 {
 		let block = node.next_block().await?;
@@ -40,13 +45,13 @@ async fn empty_blocks_smoke() -> eyre::Result<()> {
 	Ok(())
 }
 
-#[tokio::test]
-async fn blocks_with_txs_smoke() -> eyre::Result<()> {
+#[unichain_test]
+async fn blocks_with_txs_smoke(harness: Harness) -> eyre::Result<()> {
 	const BLOCKS: usize = 5;
 	const TXS_PER_BLOCK: usize = 60;
 
-	let (node, ws_addr) = Flashblocks::test_node().await?;
-	let ws = WebSocketObserver::new(ws_addr).await?;
+	let node = harness.node();
+	let ws = harness.ws_observer().await?;
 
 	for i in 1..=BLOCKS {
 		let mut sent_txs = Vec::new();
@@ -100,19 +105,22 @@ async fn blocks_with_txs_smoke() -> eyre::Result<()> {
 }
 
 // This test is to check that we get 8 flashblocks with 2000ms remaining time
-// and 250ms flashblock interval and 75ms leeway time
-#[tokio::test]
-async fn flashblock_timings_2000ms_block_time_0ms_leeway_time()
--> eyre::Result<()> {
+// and 250ms flashblock interval and 0ms leeway time
+#[unichain_test(args = BuilderArgs {
+    flashblocks_args: FlashblocksArgs {
+        interval: Duration::from_millis(250),
+		leeway_time: Duration::from_millis(0),
+		..Default::default()
+    },
+    ..Default::default()
+})]
+async fn flashblock_timings_2000ms_block_time_0ms_leeway_time(
+	harness: Harness,
+) -> eyre::Result<()> {
 	const TXS_PER_BLOCK: usize = 60;
 
-	let (node, ws_addr) =
-		Flashblocks::test_node_with_custom_leeway_time_and_interval(
-			Duration::from_millis(0),
-			Duration::from_millis(250),
-		)
-		.await?;
-	let ws = WebSocketObserver::new(ws_addr).await?;
+	let node = harness.node();
+	let ws = harness.ws_observer().await?;
 
 	// Create a block at the top of the timestamp second
 	// Wait until the exact top of the next second
@@ -150,16 +158,17 @@ async fn flashblock_timings_2000ms_block_time_0ms_leeway_time()
 	Ok(())
 }
 
-#[tokio::test]
 // This test is to check that we get 8 flashblocks with 2000ms - 75ms = 1925ms
 // remaining time. 2000ms blocktimes, 250ms flashblock interval, and 75ms leeway
 // time
-async fn flashblock_timings_2000ms_block_time_75ms_leeway_time()
--> eyre::Result<()> {
+#[unichain_test]
+async fn flashblock_timings_2000ms_block_time_75ms_leeway_time(
+	harness: Harness,
+) -> eyre::Result<()> {
 	const TXS_PER_BLOCK: usize = 60;
 
-	let (node, ws_addr) = Flashblocks::test_node().await?;
-	let ws = WebSocketObserver::new(ws_addr).await?;
+	let node = harness.node();
+	let ws = harness.ws_observer().await?;
 
 	// Create a block at the top of the timestamp second
 	// Wait until the exact top of the next second
@@ -197,21 +206,24 @@ async fn flashblock_timings_2000ms_block_time_75ms_leeway_time()
 	Ok(())
 }
 
-#[tokio::test]
 // This test is to check that we get 3 flashblocks with 2000ms - 500ms = 1500ms
 // remaining time. 2000ms blocktimes, 500ms flashblock interval, and 500ms
 // leeway time
-async fn flashblock_timings_2000ms_block_time_500ms_leeway_time()
--> eyre::Result<()> {
+#[unichain_test(args = BuilderArgs {
+    flashblocks_args: FlashblocksArgs {
+        interval: Duration::from_millis(500),
+		leeway_time: Duration::from_millis(500),
+		..Default::default()
+    },
+    ..Default::default()
+})]
+async fn flashblock_timings_2000ms_block_time_500ms_leeway_time(
+	harness: Harness,
+) -> eyre::Result<()> {
 	const TXS_PER_BLOCK: usize = 60;
 
-	let (node, ws_addr) =
-		Flashblocks::test_node_with_custom_leeway_time_and_interval(
-			Duration::from_millis(500),
-			Duration::from_millis(500),
-		)
-		.await?;
-	let ws = WebSocketObserver::new(ws_addr).await?;
+	let node = harness.node();
+	let ws = harness.ws_observer().await?;
 
 	// Create a block at the top of the timestamp second
 	// Wait until the exact top of the next second

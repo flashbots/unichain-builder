@@ -1,5 +1,6 @@
 use {
-	crate::{platform::Flashblocks, tests::assert_has_sequencer_tx},
+	crate::tests::{Harness, assert_has_sequencer_tx},
+	macros::unichain_test,
 	rblib::{
 		alloy::{consensus::Transaction, primitives::U256},
 		test_utils::{BlockResponseExt, TransactionRequestExt},
@@ -12,9 +13,9 @@ use {
 /// because in flashblocks the transaction order is commited by the block after
 /// each flashblock is produced, so the order is only going to hold within one
 /// flashblock, but not the entire block.
-#[tokio::test]
-async fn txs_ordered_by_priority_fee() -> eyre::Result<()> {
-	let (node, _) = Flashblocks::test_node().await?;
+#[unichain_test]
+async fn txs_ordered_by_priority_fee(harness: Harness) -> eyre::Result<()> {
+	let node = harness.node();
 
 	let tx_tips = [100, 300, 200, 500, 400];
 	for (i, tip) in tx_tips.iter().enumerate() {

@@ -5,7 +5,12 @@
 //! to monitor flashblock production in real time.
 
 use {
-	crate::{Flashblocks, tests::*},
+	crate::{
+		Flashblocks,
+		args::{BuilderArgs, FlashblocksArgs},
+		tests::*,
+	},
+	macros::unichain_test,
 	rblib::alloy::eips::Decodable2718,
 	std::time::{Duration, SystemTime, UNIX_EPOCH},
 	tracing::debug,
@@ -24,19 +29,11 @@ async fn wait_for_second_boundary() -> eyre::Result<()> {
 /// block and returns the flashblocks that were produced. Also makes some basic
 /// checks on the block like that it contains the sequencer tx and it contains
 /// the transactions that we sent to it.
-async fn run_test(
-	leeway_time: Duration,
-	flashblocks_interval: Duration,
-) -> eyre::Result<Vec<ObservedFlashblock>> {
+async fn run_test(harness: Harness) -> eyre::Result<Vec<ObservedFlashblock>> {
 	const TXS_PER_BLOCK: usize = 60;
 
-	let (node, ws_addr) =
-		Flashblocks::test_node_with_custom_leeway_time_and_interval(
-			leeway_time,
-			flashblocks_interval,
-		)
-		.await?;
-	let ws = WebSocketObserver::new(ws_addr).await?;
+	let node = harness.node();
+	let ws = harness.ws_observer().await?;
 
 	wait_for_second_boundary().await?;
 
@@ -115,14 +112,18 @@ fn verify_flashblock_timing(
 ///
 /// With no leeway time and 2000ms of available time, dividing by 250ms
 /// intervals gives exactly 8 flashblocks.
-#[tokio::test]
-async fn flashblock_count_2000ms_block_time_0ms_leeway_250ms_interval()
--> eyre::Result<()> {
-	let flashblocks = Box::pin(run_test(
-		Duration::from_millis(0),
-		Duration::from_millis(250),
-	))
-	.await?;
+#[unichain_test(args = BuilderArgs {
+    flashblocks_args: FlashblocksArgs {
+        interval: Duration::from_millis(250),
+		leeway_time: Duration::from_millis(0),
+		..Default::default()
+    },
+    ..Default::default()
+})]
+async fn flashblock_count_2000ms_block_time_0ms_leeway_250ms_interval(
+	harness: Harness,
+) -> eyre::Result<()> {
+	let flashblocks = Box::pin(run_test(harness)).await?;
 
 	verify_flashblock_timing(&flashblocks, Duration::from_millis(250));
 
@@ -141,14 +142,18 @@ async fn flashblock_count_2000ms_block_time_0ms_leeway_250ms_interval()
 /// With 75ms leeway, remaining time is 1925ms. Dividing by 250ms:
 /// 1925 / 250 = 7 remainder 175
 /// So we get 8 flashblocks total (7 at 250ms + 1 at 175ms)
-#[tokio::test]
-async fn flashblock_count_2000ms_block_time_75ms_leeway_250ms_interval()
--> eyre::Result<()> {
-	let flashblocks = Box::pin(run_test(
-		Duration::from_millis(75),
-		Duration::from_millis(250),
-	))
-	.await?;
+#[unichain_test(args = BuilderArgs {
+    flashblocks_args: FlashblocksArgs {
+        interval: Duration::from_millis(250),
+		leeway_time: Duration::from_millis(75),
+		..Default::default()
+    },
+    ..Default::default()
+})]
+async fn flashblock_count_2000ms_block_time_75ms_leeway_250ms_interval(
+	harness: Harness,
+) -> eyre::Result<()> {
+	let flashblocks = Box::pin(run_test(harness)).await?;
 
 	verify_flashblock_timing(&flashblocks, Duration::from_millis(250));
 
@@ -166,14 +171,18 @@ async fn flashblock_count_2000ms_block_time_75ms_leeway_250ms_interval()
 ///
 /// With 500ms leeway, remaining time is 1500ms. Dividing by 500ms:
 /// 1500 / 500 = 3 exactly
-#[tokio::test]
-async fn flashblock_count_2000ms_block_time_500ms_leeway_500ms_interval()
--> eyre::Result<()> {
-	let flashblocks = Box::pin(run_test(
-		Duration::from_millis(500),
-		Duration::from_millis(500),
-	))
-	.await?;
+#[unichain_test(args = BuilderArgs {
+    flashblocks_args: FlashblocksArgs {
+        interval: Duration::from_millis(500),
+		leeway_time: Duration::from_millis(500),
+		..Default::default()
+    },
+    ..Default::default()
+})]
+async fn flashblock_count_2000ms_block_time_500ms_leeway_500ms_interval(
+	harness: Harness,
+) -> eyre::Result<()> {
+	let flashblocks = Box::pin(run_test(harness)).await?;
 
 	verify_flashblock_timing(&flashblocks, Duration::from_millis(500));
 
@@ -192,14 +201,18 @@ async fn flashblock_count_2000ms_block_time_500ms_leeway_500ms_interval()
 /// But with 750ms leeway, remaining time is 1250ms. Dividing by 750ms:
 /// 1250 / 750 = 1 remainder 500
 /// So we actually get 2 flashblocks total (1 at 750ms + 1 at 500ms)
-#[tokio::test]
-async fn flashblock_count_2000ms_block_time_750ms_leeway_750ms_interval()
--> eyre::Result<()> {
-	let flashblocks = Box::pin(run_test(
-		Duration::from_millis(750),
-		Duration::from_millis(750),
-	))
-	.await?;
+#[unichain_test(args = BuilderArgs {
+    flashblocks_args: FlashblocksArgs {
+        interval: Duration::from_millis(750),
+		leeway_time: Duration::from_millis(750),
+		..Default::default()
+    },
+    ..Default::default()
+})]
+async fn flashblock_count_2000ms_block_time_750ms_leeway_750ms_interval(
+	harness: Harness,
+) -> eyre::Result<()> {
+	let flashblocks = Box::pin(run_test(harness)).await?;
 
 	verify_flashblock_timing(&flashblocks, Duration::from_millis(500));
 

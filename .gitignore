@@ -77,6 +77,9 @@ Cargo.lock
 .history
 .ionide
 
+### Jetbrains ###
+.idea/
+
 ### Windows ###
 # Windows thumbnail cache files
 Thumbs.db

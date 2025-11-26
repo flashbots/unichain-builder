@@ -9,7 +9,7 @@
 //! - The `eth_sendBundle` input parameters and their validation.
 
 use {
-	crate::platform::Flashblocks,
+	crate::{platform::Flashblocks, state::FlashblockNumber},
 	core::convert::Infallible,
 	rblib::{
 		alloy::{
@@ -126,7 +126,7 @@ impl Bundle<Flashblocks> for FlashblocksBundle {
 	fn is_eligible(
 		&self,
 		block: &BlockContext<Flashblocks>,
-		_ctx: &(),
+		_ctx: &FlashblockNumber,
 	) -> Eligibility {
 		if self.txs.is_empty() {
 			// empty bundles are never eligible

@@ -5,7 +5,10 @@
 //! flashblock partitioning logic.
 
 use {
-	crate::{Flashblocks, state::FlashblockNumber},
+	crate::{
+		Flashblocks,
+		state::{FlashblockNumber, TargetFlashblocks},
+	},
 	core::time::Duration,
 	rblib::{alloy::consensus::BlockHeader, prelude::*},
 	std::sync::{Arc, Mutex},
@@ -33,7 +36,7 @@ pub struct FlashblockState {
 	current_block: Option<u64>,
 	/// Current flashblock number. Used to check if we're on the first
 	/// flashblock or to adjust the target number of flashblocks for a block.
-	flashblock_number: Arc<FlashblockNumber>,
+	target_flashblocks: Arc<TargetFlashblocks>,
 	/// Duration for the first flashblock, which may be shortened to absorb
 	/// timing variance.
 	first_flashblock_interval: Duration,
@@ -43,20 +46,16 @@ pub struct FlashblockState {
 }
 
 impl FlashblockState {
-	fn current_gas_limit(&self) -> u64 {
+	fn current_gas_limit(&self, flashblock_number: &FlashblockNumber) -> u64 {
 		self
 			.gas_per_flashblock
-			.saturating_mul(self.flashblock_number.current())
+			.saturating_mul(flashblock_number.current())
 	}
 }
 
 impl FlashblockLimits {
-	pub fn new(
-		interval: Duration,
-		flashblock_number: Arc<FlashblockNumber>,
-	) -> Self {
+	pub fn new(interval: Duration) -> Self {
 		let state = FlashblockState {
-			flashblock_number,
 			..Default::default()
 		};
 		FlashblockLimits {
@@ -97,10 +96,7 @@ impl FlashblockLimits {
 				.unwrap_or(enclosing.gas_limit);
 			state.current_block = Some(payload.block().number());
 			state.first_flashblock_interval = first_flashblock_interval;
-			state.flashblock_number.reset_current_flashblock();
-			state
-				.flashblock_number
-				.set_target_flashblocks(target_flashblock);
+			state.target_flashblocks.set(target_flashblock);
 		}
 	}
 
@@ -111,10 +107,11 @@ impl FlashblockLimits {
 	pub fn get_limits(
 		&self,
 		enclosing: &Limits<Flashblocks>,
+		flashblock_number: &FlashblockNumber,
 	) -> Limits<Flashblocks> {
 		let state = self.state.lock().expect("mutex is not poisoned");
 		// If flashblock number == 1, we're building the first flashblock
-		let deadline = if state.flashblock_number.current() == 1 {
+		let deadline = if flashblock_number.current() == 1 {
 			state.first_flashblock_interval
 		} else {
 			self.interval
@@ -122,7 +119,7 @@ impl FlashblockLimits {
 
 		enclosing
 			.with_deadline(deadline)
-			.with_gas_limit(state.current_gas_limit())
+			.with_gas_limit(state.current_gas_limit(flashblock_number))
 	}
 
 	/// Calculates the number of flashblocks and first flashblock interval for
@@ -153,27 +150,30 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 		payload: &Checkpoint<Flashblocks>,
 		enclosing: &Limits<Flashblocks>,
 	) -> Limits<Flashblocks> {
+		let flashblock_number = payload.context();
 		// Check the state and reset if we started building next block
 		self.update_state(payload, enclosing);
 
-		let limits = self.get_limits(enclosing);
+		let limits = self.get_limits(enclosing, flashblock_number);
 
 		let state = self.state.lock().expect("mutex is not poisoned");
-		if state.flashblock_number.in_bounds() {
+		let flashblock_number = payload.context();
+		if flashblock_number.current() <= state.target_flashblocks.get() {
 			let gas_used = payload.cumulative_gas_used();
 			let remaining_gas = enclosing.gas_limit.saturating_sub(gas_used);
 			tracing::info!(
 				"Creating flashblocks limits: {}, payload txs: {}, gas used: {} \
 				 ({}%), gas_remaining: {} ({}%), next_block_gas_limit: {} ({}%), gas \
 				 per block: {} ({}%), remaining_time: {}ms, gas_limit: {}",
-				state.flashblock_number,
+				flashblock_number,
 				payload.history().transactions().count(),
 				gas_used,
 				(gas_used * 100 / enclosing.gas_limit),
 				remaining_gas,
 				(remaining_gas * 100 / enclosing.gas_limit),
-				state.current_gas_limit(),
-				(state.current_gas_limit() * 100 / enclosing.gas_limit),
+				state.current_gas_limit(flashblock_number),
+				(state.current_gas_limit(flashblock_number) * 100
+					/ enclosing.gas_limit),
 				state.gas_per_flashblock,
 				(state.gas_per_flashblock * 100 / enclosing.gas_limit),
 				limits.deadline.expect("deadline is set").as_millis(),

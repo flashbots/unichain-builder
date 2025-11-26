@@ -10,7 +10,7 @@
 //!   building jobs.
 
 use {
-	crate::{Flashblocks, primitives::*, state::FlashblockNumber},
+	crate::{Flashblocks, primitives::*},
 	atomic_time::AtomicOptionInstant,
 	core::{net::SocketAddr, sync::atomic::Ordering},
 	futures::{SinkExt, StreamExt},
@@ -50,10 +50,6 @@ pub struct PublishFlashblock {
 	/// subscribers.
 	sink: Arc<WebSocketSink>,
 
-	/// Reference to the current flashblock number within the payload job.
-	/// Once we build a flashblock we increment this.
-	flashblock_number: Arc<FlashblockNumber>,
-
 	/// Set once at the begining of the payload job, captures immutable
 	/// information about the payload that is being built. This info is derived
 	/// from the payload attributes parameter on the FCU from the EL node.
@@ -70,13 +66,11 @@ pub struct PublishFlashblock {
 impl PublishFlashblock {
 	pub fn new(
 		sink: Arc<WebSocketSink>,
-		flashblock_number: Arc<FlashblockNumber>,
 		// TODO: Will be implemented later
 		_calculate_state_root: bool,
 	) -> Self {
 		Self {
 			sink,
-			flashblock_number,
 			block_base: RwLock::new(None),
 			metrics: Metrics::default(),
 			times: Times::default(),
@@ -120,10 +114,10 @@ impl Step<Flashblocks> for PublishFlashblock {
 				.expect("withdrawals_root is present"),
 		};
 
+		let flashblock_number = payload.context();
+
 		// Get 0-index to use in flashblock
-		let index = self.flashblock_number.index();
-		// Increment flashblock number since we've built the flashblock
-		self.flashblock_number.advance();
+		let index = flashblock_number.index();
 
 		// Push the contents of the payload
 		if let Err(e) = self.sink.publish(&FlashblocksPayloadV1 {
@@ -152,10 +146,13 @@ impl Step<Flashblocks> for PublishFlashblock {
 		self.times.on_published_block(&self.metrics);
 		self.capture_payload_metrics(&this_block_span);
 
+		// Increment flashblock number since we've built the flashblock
+		let next_flashblock_number = flashblock_number.advance();
+
 		// Place a barrier after each published flashblock to freeze the contents
 		// of the payload up to this point, since this becomes a publicly committed
 		// state.
-		ControlFlow::Ok(payload.barrier())
+		ControlFlow::Ok(payload.barrier_with_context(next_flashblock_number))
 	}
 
 	/// Before the payload job starts prepare the contents of the
@@ -200,9 +197,6 @@ impl Step<Flashblocks> for PublishFlashblock {
 	) -> Result<(), PayloadBuilderError> {
 		self.times.on_job_ended(&self.metrics);
 
-		// Reset current flashblock number since we're done with the whole block
-		let count = self.flashblock_number.reset_current_flashblock();
-		self.metrics.blocks_per_payload_job.record(count as f64);
 		*self.block_base.write() = None;
 
 		Ok(())
@@ -232,7 +226,10 @@ impl PublishFlashblock {
 		payload: &Checkpoint<Flashblocks>,
 	) -> Span<Flashblocks> {
 		// If we haven't published flashblock return whole history
-		payload.history()
+		let previous_flashblock_number = payload.context().clone();
+		payload
+			.history_since_last_context(&previous_flashblock_number)
+			.unwrap_or(payload.history())
 	}
 
 	/// Called for each flashblock to capture metrics about the produced
@@ -272,9 +269,6 @@ struct Metrics {
 
 	/// Histogram of the number of bundles per flashblock.
 	pub bundles_per_block: Histogram,
-
-	/// Histogram of flashblocks per job.
-	pub blocks_per_payload_job: Histogram,
 
 	/// The time interval flashblocks within one block.
 	pub intra_block_interval: Histogram,

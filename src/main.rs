@@ -6,7 +6,7 @@ use {
 		publish::{PublishFlashblock, WebSocketSink},
 		rpc::TransactionStatusRpc,
 		signer::BuilderSigner,
-		state::FlashblockNumber,
+		state::TargetFlashblocks,
 		stop::BreakAfterMaxFlashblocks,
 	},
 	platform::Flashblocks,
@@ -104,9 +104,7 @@ fn build_pipeline(
 		.clone()
 		.unwrap_or(BuilderSigner::random());
 
-	// Multiple steps need to access flashblock number state, so we need to
-	// initialize it outside
-	let flashblock_number = Arc::new(FlashblockNumber::new());
+	let target_flashblocks = Arc::new(TargetFlashblocks::new());
 
 	let pipeline = Pipeline::<Flashblocks>::named("top")
 		.with_step(OptimismPrologue)
@@ -143,17 +141,13 @@ fn build_pipeline(
 								)
 								.with_epilogue(PublishFlashblock::new(
 									ws.clone(),
-									flashblock_number.clone(),
 									cli_args.flashblocks_args.calculate_state_root,
 								))
-								.with_limits(FlashblockLimits::new(
-									interval,
-									flashblock_number.clone(),
-								)),
+								.with_limits(FlashblockLimits::new(interval)),
 						)
 						.with_step(BreakAfterDeadline),
 				)
-				.with_step(BreakAfterMaxFlashblocks::new(flashblock_number)),
+				.with_step(BreakAfterMaxFlashblocks::new(target_flashblocks)),
 		)
 		.with_limits(Scaled::default().deadline(total_building_time));
 

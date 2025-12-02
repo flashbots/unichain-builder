@@ -10,14 +10,15 @@ use {
 		stop::BreakAfterMaxFlashblocks,
 	},
 	platform::Flashblocks,
-	rblib::{pool::*, prelude::*, steps::*},
-	reth_optimism_node::{
-		OpAddOns,
-		OpEngineApiBuilder,
-		OpEngineValidatorBuilder,
-		OpNode,
+	rblib::{
+		pool::*,
+		prelude::*,
+		reth::optimism::{
+			node::{OpAddOns, OpEngineApiBuilder, OpEngineValidatorBuilder, OpNode},
+			rpc::OpEthApiBuilder,
+		},
+		steps::*,
 	},
-	reth_optimism_rpc::OpEthApiBuilder,
 	std::sync::Arc,
 };
 

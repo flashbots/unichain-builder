@@ -15,13 +15,15 @@ use {
 		},
 		pool::*,
 		prelude::*,
-		reth::optimism::{
-			chainspec,
-			node::{OpEngineApiBuilder, OpEngineValidatorBuilder, OpNode},
+		reth::{
+			node::builder::rpc::BasicEngineValidatorBuilder,
+			optimism::{
+				chainspec,
+				node::{OpEngineApiBuilder, OpEngineValidatorBuilder, OpNode},
+			},
 		},
 		test_utils::*,
 	},
-	reth_node_builder::rpc::BasicEngineValidatorBuilder,
 	std::time::{SystemTime, UNIX_EPOCH},
 };
 

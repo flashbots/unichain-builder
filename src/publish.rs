@@ -18,8 +18,8 @@ use {
 	rblib::{
 		alloy::{consensus::BlockHeader, eips::Encodable2718, primitives::U256},
 		prelude::*,
+		reth::node::builder::PayloadBuilderAttributes,
 	},
-	reth_node_builder::PayloadBuilderAttributes,
 	std::{io, net::TcpListener, sync::Arc, time::Instant},
 	tokio::{
 		net::TcpStream,
@@ -155,7 +155,7 @@ impl Step<Flashblocks> for PublishFlashblock {
 		// Place a barrier after each published flashblock to freeze the contents
 		// of the payload up to this point, since this becomes a publicly committed
 		// state.
-		ControlFlow::Ok(payload.barrier_with_tag("flashblock"))
+		ControlFlow::Ok(payload.barrier())
 	}
 
 	/// Before the payload job starts prepare the contents of the
@@ -232,9 +232,7 @@ impl PublishFlashblock {
 		payload: &Checkpoint<Flashblocks>,
 	) -> Span<Flashblocks> {
 		// If we haven't published flashblock return whole history
-		payload
-			.history_since_last_tag("flashblock")
-			.unwrap_or(payload.history())
+		payload.history()
 	}
 
 	/// Called for each flashblock to capture metrics about the produced

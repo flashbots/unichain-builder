@@ -10,6 +10,7 @@ use {
 		alloy::primitives::{B256, TxHash},
 		reth::{
 			ethereum::rpc::eth::EthApiError,
+			node::builder::{FullNodeComponents, rpc::RpcContext},
 			rpc::{
 				api::eth::helpers::FullEthApi,
 				compat::RpcTypes,
@@ -17,7 +18,6 @@ use {
 			},
 		},
 	},
-	reth_node_builder::{FullNodeComponents, rpc::RpcContext},
 };
 
 /// This RPC exension provides more accurate transaction status information for

@@ -77,7 +77,7 @@ impl FlashblockLimits {
 	pub fn update_state(
 		&self,
 		payload: &Checkpoint<Flashblocks>,
-		enclosing: &Limits,
+		enclosing: &Limits<Flashblocks>,
 	) {
 		let mut state = self.state.lock().expect("mutex is not poisoned");
 
@@ -108,7 +108,10 @@ impl FlashblockLimits {
 	///
 	/// If all flashblocks have been produced, returns a deadline of 1ms to stop
 	/// production.
-	pub fn get_limits(&self, enclosing: &Limits) -> Limits {
+	pub fn get_limits(
+		&self,
+		enclosing: &Limits<Flashblocks>,
+	) -> Limits<Flashblocks> {
 		let state = self.state.lock().expect("mutex is not poisoned");
 		// If flashblock number == 1, we're building the first flashblock
 		let deadline = if state.flashblock_number.current() == 1 {
@@ -148,8 +151,8 @@ impl ScopedLimits<Flashblocks> for FlashblockLimits {
 	fn create(
 		&self,
 		payload: &Checkpoint<Flashblocks>,
-		enclosing: &Limits,
-	) -> Limits {
+		enclosing: &Limits<Flashblocks>,
+	) -> Limits<Flashblocks> {
 		// Check the state and reset if we started building next block
 		self.update_state(payload, enclosing);
 

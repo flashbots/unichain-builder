@@ -51,7 +51,7 @@ pub struct FlashblocksBundle {
 
 	#[serde(
 		default,
-		with = "alloy_serde::quantity::opt",
+		with = "rblib::alloy::serde::quantity::opt",
 		skip_serializing_if = "Option::is_none"
 	)]
 	pub min_block_number: Option<u64>,
@@ -60,7 +60,7 @@ pub struct FlashblocksBundle {
 	/// blocks with a block number higher than this value.
 	#[serde(
 		default,
-		with = "alloy_serde::quantity::opt",
+		with = "rblib::alloy::serde::quantity::opt",
 		skip_serializing_if = "Option::is_none"
 	)]
 	pub max_block_number: Option<u64>,
@@ -123,7 +123,11 @@ impl Bundle<Flashblocks> for FlashblocksBundle {
 
 	/// Tests the eligibility of the bundle for inclusion in a block before
 	/// executing any of its transactions.
-	fn is_eligible(&self, block: &BlockContext<Flashblocks>) -> Eligibility {
+	fn is_eligible(
+		&self,
+		block: &BlockContext<Flashblocks>,
+		_ctx: &(),
+	) -> Eligibility {
 		if self.txs.is_empty() {
 			// empty bundles are never eligible
 			return Eligibility::PermanentlyIneligible;

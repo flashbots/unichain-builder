@@ -24,8 +24,8 @@ eyre = "0.6"
 url = "2.5.2"
 rand = "0.9"
 humantime = "2.2"
-alloy = { version = "1.0.25", features = ["full"] }
-op-alloy = { version = "0.19", features = ["full"] }
+alloy = { version = "1.0.41", features = ["full"] }
+op-alloy = { version = "0.22", features = ["full"] }
 human_format = "1.1.0"
 color-eyre = "0.6"
 chrono = "0.4.41"

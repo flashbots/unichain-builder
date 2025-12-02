@@ -10,7 +10,12 @@
 //!   building jobs.
 
 use {
-	crate::{Flashblocks, primitives::*, state::FlashblockNumber},
+	crate::{
+		Flashblocks,
+		platform::TagContext,
+		primitives::*,
+		state::FlashblockNumber,
+	},
 	atomic_time::AtomicOptionInstant,
 	core::{net::SocketAddr, sync::atomic::Ordering},
 	futures::{SinkExt, StreamExt},
@@ -155,7 +160,9 @@ impl Step<Flashblocks> for PublishFlashblock {
 		// Place a barrier after each published flashblock to freeze the contents
 		// of the payload up to this point, since this becomes a publicly committed
 		// state.
-		ControlFlow::Ok(payload.barrier_with_tag("flashblock"))
+		ControlFlow::Ok(
+			payload.barrier_with_context(TagContext::tag("flashblock".to_string())),
+		)
 	}
 
 	/// Before the payload job starts prepare the contents of the
@@ -232,8 +239,9 @@ impl PublishFlashblock {
 		payload: &Checkpoint<Flashblocks>,
 	) -> Span<Flashblocks> {
 		// If we haven't published flashblock return whole history
+		debug!("Unpublished payload");
 		payload
-			.history_since_last_tag("flashblock")
+			.history_since_last_context(&TagContext::tag("flashblock".to_string()))
 			.unwrap_or(payload.history())
 	}
 

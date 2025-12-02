@@ -19,8 +19,10 @@ pub struct Flashblocks;
 
 impl Platform for Flashblocks {
 	type Bundle = FlashblocksBundle;
+	type CheckpointContext = TagContext;
 	type DefaultLimits = types::DefaultLimits<Optimism>;
 	type EvmConfig = types::EvmConfig<Optimism>;
+	type ExtraLimits = types::ExtraLimits<Optimism>;
 	type NodeTypes = types::NodeTypes<Optimism>;
 	type PooledTransaction = types::PooledTransaction<Optimism>;
 
@@ -35,7 +37,7 @@ impl Platform for Flashblocks {
 		chainspec: &types::ChainSpec<P>,
 		parent: &types::Header<P>,
 		attributes: &types::PayloadBuilderAttributes<P>,
-	) -> types::NextBlockEnvContext<P>
+	) -> Result<types::NextBlockEnvContext<P>, types::EvmEnvError<P>>
 	where
 		P: traits::PlatformExecBounds<Self>,
 	{
@@ -58,4 +60,17 @@ impl Platform for Flashblocks {
 /// Inherits all optimism RPC types for the `Flashblocks` platform.
 impl PlatformWithRpcTypes for Flashblocks {
 	type RpcTypes = types::RpcTypes<Optimism>;
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct TagContext {
+	pub tag: String,
+}
+
+impl CheckpointContext<Flashblocks> for TagContext {}
+
+impl TagContext {
+	pub fn tag(tag: String) -> Self {
+		Self { tag }
+	}
 }

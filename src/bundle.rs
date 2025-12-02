@@ -123,7 +123,11 @@ impl Bundle<Flashblocks> for FlashblocksBundle {
 
 	/// Tests the eligibility of the bundle for inclusion in a block before
 	/// executing any of its transactions.
-	fn is_eligible(&self, block: &BlockContext<Flashblocks>) -> Eligibility {
+	fn is_eligible(
+		&self,
+		block: &BlockContext<Flashblocks>,
+		_ctx: &<Flashblocks as Platform>::CheckpointContext,
+	) -> Eligibility {
 		if self.txs.is_empty() {
 			// empty bundles are never eligible
 			return Eligibility::PermanentlyIneligible;

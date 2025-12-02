@@ -20,6 +20,7 @@ use {
 		steps::*,
 	},
 	std::sync::Arc,
+	tracing::info,
 };
 
 mod args;
@@ -106,6 +107,11 @@ fn build_pipeline(
 
 	let target_flashblocks = Arc::new(TargetFlashblocks::new());
 
+	info!(
+		"cli_args.builder_signer.is_some() = {}",
+		cli_args.builder_signer.is_some()
+	);
+
 	let pipeline = Pipeline::<Flashblocks>::named("top")
 		.with_step(OptimismPrologue)
 		.with_step_if(
@@ -123,27 +129,34 @@ fn build_pipeline(
 					Once,
 					Pipeline::named("single_flashblock")
 						.with_pipeline(
-							Loop,
+							Once,
 							Pipeline::named("flashblock_steps")
-								.with_step(AppendOrders::from_pool(pool).with_ok_on_limit())
-								.with_step(OrderByPriorityFee::default())
-								.with_step_if(
-									cli_args.revert_protection,
-									RemoveRevertedTransactions::default(),
+								.with_pipeline(
+									Loop,
+									Pipeline::named("inner_flashblock_steps")
+										.with_step(AppendOrders::from_pool(pool).with_ok_on_limit())
+										.with_step(OrderByPriorityFee::default())
+										.with_step_if(
+											cli_args.revert_protection,
+											RemoveRevertedTransactions::default(),
+										)
+										.with_step(BreakAfterDeadline),
 								)
-								.with_step(BreakAfterDeadline)
-								.with_epilogue_if(
+								.with_step_if(
 									cli_args.builder_signer.is_some(),
 									BuilderEpilogue::with_signer(builder_signer.clone().into())
 										.with_message(|block| {
 											format!("Block Number: {}", block.number())
 										}),
 								)
-								.with_epilogue(PublishFlashblock::new(
+								.with_step(PublishFlashblock::new(
 									ws.clone(),
 									cli_args.flashblocks_args.calculate_state_root,
 								))
-								.with_limits(FlashblockLimits::new(interval)),
+								.with_limits(FlashblockLimits::new(
+									interval,
+									target_flashblocks.clone(),
+								)),
 						)
 						.with_step(BreakAfterDeadline),
 				)

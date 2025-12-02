@@ -69,7 +69,6 @@ async fn blocks_have_builder_tx() -> eyre::Result<()> {
 		Box::pin(Flashblocks::test_node_with_builder_signer()).await?;
 
 	let block = node.next_block().await?;
-	debug!("produced block: {block:#?}");
 
 	assert_eq!(block.number(), 1);
 	assert_eq!(block.tx_count(), 9); // sequencer deposit tx + 8 builder txs for each flashblock

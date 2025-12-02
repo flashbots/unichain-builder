@@ -89,6 +89,7 @@ impl Step<Flashblocks> for PublishFlashblock {
 			.transactions()
 			.map(|tx| tx.encoded_2718().into())
 			.collect();
+		let num_txs = transactions.len();
 
 		let sealed_block = payload.build_payload();
 		if let Err(e) = sealed_block {
@@ -136,10 +137,11 @@ impl Step<Flashblocks> for PublishFlashblock {
 		}
 
 		info!(
-			"Published flashblock {}, num_transactions: {}, gas_used: {}",
-			index,
-			payload.history().transactions().count(),
-			payload.gas_used()
+			index = index,
+			num_transactions = num_txs,
+			cumulative_gas_used = payload.gas_used(),
+			payload_id = ?ctx.block().payload_id(),
+			"Published flashblock",
 		);
 
 		// block published to WS successfully
@@ -214,21 +216,14 @@ impl Step<Flashblocks> for PublishFlashblock {
 }
 
 impl PublishFlashblock {
-	/// Returns a span that covers all payload checkpoints since the last barrier.
-	/// Those are the transactions that are going to be published in this
+	/// Returns a span that covers all payload checkpoints for the current
 	/// flashblock.
-	///
-	/// One exception is the first flashblock, we want to get all checkpoints
-	/// since the begining of the block, because the `OptimismPrologue` step
-	/// places a barrier after sequencer transactions and we want to broadcast
-	/// those transactions as well.
 	fn unpublished_payload(
 		payload: &Checkpoint<Flashblocks>,
 	) -> Span<Flashblocks> {
-		// If we haven't published flashblock return whole history
-		let previous_flashblock_number = payload.context().clone();
+		let current_flashblock_number = payload.context();
 		payload
-			.history_since_last_context(&previous_flashblock_number)
+			.history_since_first_context(current_flashblock_number)
 			.unwrap_or(payload.history())
 	}
 

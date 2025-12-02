@@ -12,6 +12,7 @@ use {
 	core::time::Duration,
 	rblib::{alloy::consensus::BlockHeader, prelude::*},
 	std::sync::{Arc, Mutex},
+	tracing::debug,
 };
 
 /// Specifies the limits for individual flashblocks.
@@ -54,8 +55,12 @@ impl FlashblockState {
 }
 
 impl FlashblockLimits {
-	pub fn new(interval: Duration) -> Self {
+	pub fn new(
+		interval: Duration,
+		target_flashblocks: Arc<TargetFlashblocks>,
+	) -> Self {
 		let state = FlashblockState {
+			target_flashblocks,
 			..Default::default()
 		};
 		FlashblockLimits {
@@ -87,16 +92,22 @@ impl FlashblockLimits {
 			let elapsed = payload.building_since().elapsed();
 			let remaining_time = payload_deadline.saturating_sub(elapsed);
 
-			let (target_flashblock, first_flashblock_interval) =
+			let (target_flashblocks, first_flashblock_interval) =
 				self.calculate_flashblocks(payload, remaining_time);
 
 			state.gas_per_flashblock = enclosing
 				.gas_limit
-				.checked_div(target_flashblock)
+				.checked_div(target_flashblocks)
 				.unwrap_or(enclosing.gas_limit);
 			state.current_block = Some(payload.block().number());
 			state.first_flashblock_interval = first_flashblock_interval;
-			state.target_flashblocks.set(target_flashblock);
+			state.target_flashblocks.set(target_flashblocks);
+
+			debug!(
+				target_flashblocks = target_flashblocks,
+				first_flashblock_interval = ?first_flashblock_interval,
+				"Set flashblock timing for this block"
+			);
 		}
 	}
 

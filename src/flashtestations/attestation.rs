@@ -1,6 +1,7 @@
 use {
 	crate::signer::BuilderSigner,
 	eyre::ContextCompat,
+	futures::future::BoxFuture,
 	rblib::alloy::{
 		hex,
 		primitives::{Bytes, keccak256},
@@ -11,6 +12,14 @@ use {
 
 const DEBUG_QUOTE_SERVICE_URL: &str =
 	"http://ns31695324.ip-141-94-163.eu:10080/attest";
+
+/// Source of attestations for the TEE signer.
+pub trait AttestationSource: Send + Sync {
+	fn get_attestation<'a>(
+		&'a self,
+		signer: &'a BuilderSigner,
+	) -> BoxFuture<'a, eyre::Result<Vec<u8>>>;
+}
 
 /// Remote attestation provider
 #[derive(Debug, Clone)]
@@ -42,7 +51,7 @@ impl RemoteAttestationProvider {
 }
 
 impl RemoteAttestationProvider {
-	pub async fn get_attestation(
+	async fn fetch(
 		&self,
 		signer: &BuilderSigner,
 	) -> eyre::Result<Vec<u8>> {
@@ -68,6 +77,15 @@ impl RemoteAttestationProvider {
 		// TODO: Validate response?
 
 		Ok(body)
+	}
+}
+
+impl AttestationSource for RemoteAttestationProvider {
+	fn get_attestation<'a>(
+		&'a self,
+		signer: &'a BuilderSigner,
+	) -> BoxFuture<'a, eyre::Result<Vec<u8>>> {
+		Box::pin(async move { self.fetch(signer).await })
 	}
 }
 

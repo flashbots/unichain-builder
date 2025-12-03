@@ -2,13 +2,16 @@ use {
 	crate::{
 		flashtestations::{
 			FlashtestationsArgs,
-			attestation::RemoteAttestationProvider,
+			attestation::{
+				AttestationSource,
+				RemoteAttestationProvider,
+			},
 		},
 		signer::BuilderSigner,
 	},
 	eyre::ContextCompat,
 	rblib::alloy::primitives::{Address, Bytes},
-	std::path::Path,
+	std::{path::Path, sync::Arc},
 	tracing::{info, warn},
 };
 
@@ -33,13 +36,25 @@ pub struct FlashtestationsManager {
 	// Whether block proofs are enabled
 	pub enable_block_proofs: bool,
 
-	pub attestation_provider: RemoteAttestationProvider,
+	pub attestation_provider: Arc<dyn AttestationSource>,
 }
 
 impl FlashtestationsManager {
 	pub fn try_new(
 		args: FlashtestationsArgs,
 		builder_key: BuilderSigner,
+	) -> eyre::Result<Self> {
+		let attestation_provider = Arc::new(RemoteAttestationProvider::try_new(
+			args.debug,
+			args.quote_provider.clone(),
+		)?);
+		Self::try_new_with_source(args, builder_key, attestation_provider)
+	}
+
+	pub fn try_new_with_source(
+		args: FlashtestationsArgs,
+		builder_key: BuilderSigner,
+		attestation_provider: Arc<dyn AttestationSource>,
 	) -> eyre::Result<Self> {
 		let tee_signer = load_or_generate_tee_key(
 			&args.flashtestations_key_path,
@@ -56,9 +71,6 @@ impl FlashtestationsManager {
 			"builder policy address required when flashtestations enabled",
 		)?;
 
-		let attestation_provider =
-			RemoteAttestationProvider::try_new(args.debug, args.quote_provider)?;
-
 		Ok(Self {
 			tee_signer,
 			builder_key,
@@ -73,10 +85,7 @@ impl FlashtestationsManager {
 
 	pub async fn get_attestation(&self) -> eyre::Result<Vec<u8>> {
 		info!(target: "flashtestations", "requesting TDX attestation");
-		self
-			.attestation_provider
-			.get_attestation(&self.tee_signer)
-			.await
+		self.attestation_provider.get_attestation(&self.tee_signer).await
 	}
 }
 

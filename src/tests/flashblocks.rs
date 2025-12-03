@@ -26,7 +26,11 @@ async fn empty_blocks_smoke() -> eyre::Result<()> {
 			// The first flashblock will have the sequencer tx and the rest
 			// should be empty
 			let expected_tx_count = usize::from(j == 0);
-			assert_eq!(expected_tx_count, flashblock.diff.transactions.len());
+			assert_eq!(
+				expected_tx_count,
+				flashblock.diff.transactions.len(),
+				"expected {expected_tx_count} transactions in flashblock {j}",
+			);
 		}
 	}
 

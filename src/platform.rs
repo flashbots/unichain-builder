@@ -1,5 +1,5 @@
 use {
-	crate::bundle::FlashblocksBundle,
+	crate::{bundle::FlashblocksBundle, state::FlashblockNumber},
 	rblib::{prelude::*, reth::providers::StateProvider},
 	serde::{Deserialize, Serialize},
 	std::sync::Arc,
@@ -19,8 +19,10 @@ pub struct Flashblocks;
 
 impl Platform for Flashblocks {
 	type Bundle = FlashblocksBundle;
+	type CheckpointContext = FlashblockNumber;
 	type DefaultLimits = types::DefaultLimits<Optimism>;
 	type EvmConfig = types::EvmConfig<Optimism>;
+	type ExtraLimits = types::ExtraLimits<Optimism>;
 	type NodeTypes = types::NodeTypes<Optimism>;
 	type PooledTransaction = types::PooledTransaction<Optimism>;
 
@@ -35,7 +37,7 @@ impl Platform for Flashblocks {
 		chainspec: &types::ChainSpec<P>,
 		parent: &types::Header<P>,
 		attributes: &types::PayloadBuilderAttributes<P>,
-	) -> types::NextBlockEnvContext<P>
+	) -> Result<types::NextBlockEnvContext<P>, types::EvmEnvError<P>>
 	where
 		P: traits::PlatformExecBounds<Self>,
 	{

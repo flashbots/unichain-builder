@@ -1,26 +1,26 @@
 use {
-	crate::state::FlashblockNumber,
-	rblib::prelude::{Checkpoint, ControlFlow, Platform, Step, StepContext},
+	crate::{Flashblocks, state::TargetFlashblocks},
+	rblib::prelude::{Checkpoint, ControlFlow, Step, StepContext},
 	std::sync::Arc,
 };
 
 pub struct BreakAfterMaxFlashblocks {
-	flashblock_number: Arc<FlashblockNumber>,
+	target_flashblocks: Arc<TargetFlashblocks>,
 }
 
 impl BreakAfterMaxFlashblocks {
-	pub fn new(flashblock_number: Arc<FlashblockNumber>) -> Self {
-		Self { flashblock_number }
+	pub fn new(target_flashblocks: Arc<TargetFlashblocks>) -> Self {
+		Self { target_flashblocks }
 	}
 }
 
-impl<P: Platform> Step<P> for BreakAfterMaxFlashblocks {
+impl Step<Flashblocks> for BreakAfterMaxFlashblocks {
 	async fn step(
 		self: std::sync::Arc<Self>,
-		payload: Checkpoint<P>,
-		_: StepContext<P>,
-	) -> ControlFlow<P> {
-		if self.flashblock_number.in_bounds() {
+		payload: Checkpoint<Flashblocks>,
+		_: StepContext<Flashblocks>,
+	) -> ControlFlow<Flashblocks> {
+		if payload.context().current() <= self.target_flashblocks.get() {
 			ControlFlow::Ok(payload)
 		} else {
 			ControlFlow::Break(payload)

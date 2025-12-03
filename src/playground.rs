@@ -36,13 +36,13 @@ use {
 		alloy::hex,
 		reth::{
 			cli::chainspec::ChainSpecParser,
+			network_peers::TrustedPeer,
 			optimism::{
 				chainspec::OpChainSpec,
 				cli::{chainspec::OpChainSpecParser, commands::Commands},
 			},
 		},
 	},
-	reth_network_peers::TrustedPeer,
 	secp256k1::SecretKey,
 	std::{
 		fs::read_to_string,

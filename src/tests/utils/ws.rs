@@ -164,7 +164,12 @@ impl Observations {
 	}
 
 	fn record_flashblock(&self, payload: FlashblocksPayloadV1) {
-		debug!("observed flashblock: {payload:#?}");
+		debug!(
+			index = payload.index,
+			payload_id = ?payload.payload_id,
+			num_transactions = payload.diff.transactions.len(),
+			"Observed flashblock"
+		);
 		self.flashblocks.push(ObservedFlashblock {
 			block: payload,
 			at: Instant::now(),

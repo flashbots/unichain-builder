@@ -6,19 +6,21 @@ use {
 		publish::{PublishFlashblock, WebSocketSink},
 		rpc::TransactionStatusRpc,
 		signer::BuilderSigner,
-		state::FlashblockNumber,
+		state::TargetFlashblocks,
 		stop::BreakAfterMaxFlashblocks,
 	},
 	platform::Flashblocks,
-	rblib::{pool::*, prelude::*, steps::*},
-	reth_optimism_node::{
-		OpAddOns,
-		OpEngineApiBuilder,
-		OpEngineValidatorBuilder,
-		OpNode,
+	rblib::{
+		pool::*,
+		prelude::*,
+		reth::optimism::{
+			node::{OpAddOns, OpEngineApiBuilder, OpEngineValidatorBuilder, OpNode},
+			rpc::OpEthApiBuilder,
+		},
+		steps::*,
 	},
-	reth_optimism_rpc::OpEthApiBuilder,
 	std::sync::Arc,
+	tracing::info,
 };
 
 mod args;
@@ -103,9 +105,12 @@ fn build_pipeline(
 		.clone()
 		.unwrap_or(BuilderSigner::random());
 
-	// Multiple steps need to access flashblock number state, so we need to
-	// initialize it outside
-	let flashblock_number = Arc::new(FlashblockNumber::new());
+	let target_flashblocks = Arc::new(TargetFlashblocks::new());
+
+	info!(
+		"cli_args.builder_signer.is_some() = {}",
+		cli_args.builder_signer.is_some()
+	);
 
 	let pipeline = Pipeline::<Flashblocks>::named("top")
 		.with_step(OptimismPrologue)
@@ -124,35 +129,38 @@ fn build_pipeline(
 					Once,
 					Pipeline::named("single_flashblock")
 						.with_pipeline(
-							Loop,
+							Once,
 							Pipeline::named("flashblock_steps")
-								.with_step(AppendOrders::from_pool(pool).with_ok_on_limit())
-								.with_step(OrderByPriorityFee::default())
-								.with_step_if(
-									cli_args.revert_protection,
-									RemoveRevertedTransactions::default(),
+								.with_pipeline(
+									Loop,
+									Pipeline::named("inner_flashblock_steps")
+										.with_step(AppendOrders::from_pool(pool).with_ok_on_limit())
+										.with_step(OrderByPriorityFee::default())
+										.with_step_if(
+											cli_args.revert_protection,
+											RemoveRevertedTransactions::default(),
+										)
+										.with_step(BreakAfterDeadline),
 								)
-								.with_step(BreakAfterDeadline)
-								.with_epilogue_if(
+								.with_step_if(
 									cli_args.builder_signer.is_some(),
 									BuilderEpilogue::with_signer(builder_signer.clone().into())
 										.with_message(|block| {
 											format!("Block Number: {}", block.number())
 										}),
 								)
-								.with_epilogue(PublishFlashblock::new(
+								.with_step(PublishFlashblock::new(
 									ws.clone(),
-									flashblock_number.clone(),
 									cli_args.flashblocks_args.calculate_state_root,
 								))
 								.with_limits(FlashblockLimits::new(
 									interval,
-									flashblock_number.clone(),
+									target_flashblocks.clone(),
 								)),
 						)
 						.with_step(BreakAfterDeadline),
 				)
-				.with_step(BreakAfterMaxFlashblocks::new(flashblock_number)),
+				.with_step(BreakAfterMaxFlashblocks::new(target_flashblocks)),
 		)
 		.with_limits(Scaled::default().deadline(total_building_time));
 

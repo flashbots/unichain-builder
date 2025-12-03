@@ -65,10 +65,10 @@ async fn chain_produces_blocks_with_txs() -> eyre::Result<()> {
 /// when the builder signer is provided in the CLI arguments.
 #[tokio::test]
 async fn blocks_have_builder_tx() -> eyre::Result<()> {
-	let (node, _) = Flashblocks::test_node_with_builder_signer().await?;
+	let (node, _) =
+		Box::pin(Flashblocks::test_node_with_builder_signer()).await?;
 
 	let block = node.next_block().await?;
-	debug!("produced block: {block:#?}");
 
 	assert_eq!(block.number(), 1);
 	assert_eq!(block.tx_count(), 9); // sequencer deposit tx + 8 builder txs for each flashblock

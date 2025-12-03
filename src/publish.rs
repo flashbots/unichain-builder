@@ -17,7 +17,7 @@ use {
 	parking_lot::RwLock,
 	rblib::{
 		alloy::{consensus::BlockHeader, eips::Encodable2718, primitives::U256},
-		prelude::*,
+		prelude::{ext::CheckpointOpExt, *},
 		reth::node::builder::PayloadBuilderAttributes,
 	},
 	std::{io, net::TcpListener, sync::Arc, time::Instant},
@@ -101,6 +101,7 @@ impl Step<Flashblocks> for PublishFlashblock {
 		// the block_base.
 		// TODO: Consider moving this into its own step
 		let base = self.block_base.write().take();
+		let (_excess_blob_gas, blob_gas_used) = payload.blob_fields();
 		let diff = ExecutionPayloadFlashblockDeltaV1 {
 			state_root: sealed_block.block().state_root,
 			receipts_root: sealed_block.block().receipts_root,
@@ -113,6 +114,7 @@ impl Step<Flashblocks> for PublishFlashblock {
 				.block()
 				.withdrawals_root()
 				.expect("withdrawals_root is present"),
+			blob_gas_used,
 		};
 
 		let flashblock_number = payload.context();

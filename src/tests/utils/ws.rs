@@ -1,5 +1,4 @@
 use {
-	crate::primitives::FlashblocksPayloadV1,
 	core::{
 		net::{IpAddr, Ipv4Addr, SocketAddr},
 		ops::Deref,
@@ -8,6 +7,7 @@ use {
 	futures::{FutureExt, StreamExt},
 	itertools::Itertools,
 	orx_concurrent_vec::ConcurrentVec,
+	rollup_boost_types::flashblocks::FlashblocksPayloadV1,
 	std::{sync::Arc, time::Instant},
 	tokio::{net::TcpStream, sync::oneshot, task::JoinHandle},
 	tokio_tungstenite::{

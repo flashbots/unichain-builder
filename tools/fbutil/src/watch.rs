@@ -5,9 +5,9 @@ use {
 	colored::Colorize,
 	futures::StreamExt,
 	human_format::Formatter,
+	rollup_boost_types::flashblocks::FlashblocksPayloadV1,
 	std::time::Instant,
 	tokio_tungstenite::{connect_async, tungstenite::Message},
-	unichain_builder::FlashblocksPayloadV1,
 };
 
 #[derive(Debug, Clone, Args)]

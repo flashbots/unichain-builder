@@ -35,6 +35,7 @@ debug = ["tokio/full", "tokio/tracing", "dep:console-subscriber"]
 
 [dependencies]
 rblib = { git = "https://github.com/flashbots/rblib", rev = "9eccd22047c3f8978ae022d575dca749a81684a8" }
+rollup-boost-types = { git = "https://github.com/flashbots/rollup-boost", rev = "b282527e5f46d0915d1e5bdf44338593bc8beb2d" }
 
 futures = "0.3"
 tokio = "1.46"

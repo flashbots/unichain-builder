@@ -10,7 +10,7 @@
 //!   building jobs.
 
 use {
-	crate::{Flashblocks, primitives::*},
+	crate::Flashblocks,
 	atomic_time::AtomicOptionInstant,
 	core::{net::SocketAddr, sync::atomic::Ordering},
 	futures::{SinkExt, StreamExt},
@@ -19,6 +19,11 @@ use {
 		alloy::{consensus::BlockHeader, eips::Encodable2718, primitives::U256},
 		prelude::{ext::CheckpointOpExt, *},
 		reth::node::builder::PayloadBuilderAttributes,
+	},
+	rollup_boost_types::flashblocks::{
+		ExecutionPayloadBaseV1,
+		ExecutionPayloadFlashblockDeltaV1,
+		FlashblocksPayloadV1,
 	},
 	std::{io, net::TcpListener, sync::Arc, time::Instant},
 	tokio::{

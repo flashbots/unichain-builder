@@ -13,6 +13,8 @@ exclude.workspace = true
 [dependencies]
 unichain-builder = { path = "../.." }
 
+rollup-boost-types = { git = "https://github.com/flashbots/rollup-boost", rev = "b282527e5f46d0915d1e5bdf44338593bc8beb2d" }
+
 futures = "0.3"
 tokio = "1.46"
 tokio-tungstenite = "0.27"
@@ -24,8 +26,6 @@ eyre = "0.6"
 url = "2.5.2"
 rand = "0.9"
 humantime = "2.2"
-# alloy = { version = "1.0.25", features = ["full"] }
-# op-alloy = { version = "0.19", features = ["full"] }
 human_format = "1.1.0"
 color-eyre = "0.6"
 chrono = "0.4.41"

@@ -29,7 +29,6 @@ mod flashtestations;
 mod limits;
 mod platform;
 mod playground;
-mod primitives;
 mod publish;
 mod rpc;
 mod signer;

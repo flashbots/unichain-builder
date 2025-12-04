@@ -11,8 +11,6 @@ authors.workspace = true
 exclude.workspace = true
 
 [dependencies]
-unichain-builder = { path = "../.." }
-
 rollup-boost-types = { workspace = true }
 
 futures = { workspace = true }

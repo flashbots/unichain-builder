@@ -16,24 +16,7 @@ homepage = "https://github.com/flashbots/unichain-builder"
 authors = ["Flashbots <info@flashbots.net>"]
 exclude = [".github/"]
 
-[package]
-name = "unichain-builder"
-description = "Next-Gen Optimism L2 Block Builder"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-license.workspace = true
-homepage.workspace = true
-repository.workspace = true
-authors.workspace = true
-exclude.workspace = true
-
-[features]
-default = ["jemalloc"]
-jemalloc = ["rblib/jemalloc"]
-debug = ["tokio/full", "tokio/tracing", "dep:console-subscriber"]
-
-[dependencies]
+[workspace.dependencies]
 rblib = { git = "https://github.com/flashbots/rblib", rev = "9eccd22047c3f8978ae022d575dca749a81684a8" }
 rollup-boost-types = { git = "https://github.com/flashbots/rollup-boost", rev = "b282527e5f46d0915d1e5bdf44338593bc8beb2d" }
 
@@ -60,19 +43,62 @@ atomic-time = "0.1"
 
 secp256k1 = "0.30"
 jsonrpsee = "0.26.0"
-
-# debug flag
-console-subscriber = { version = "0.4", optional = true }
+console-subscriber = "0.4"
 tracing-subscriber = "0.3.20"
-
-[dev-dependencies]
-rblib = { git = "https://github.com/flashbots/rblib", rev = "9eccd22047c3f8978ae022d575dca749a81684a8", features = [
-    "test-utils",
-] }
-
 dashmap = "6.1"
 orx-concurrent-vec = "3.7.0"
-itertools = "0.14"
+
+[package]
+name = "unichain-builder"
+description = "Next-Gen Optimism L2 Block Builder"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+authors.workspace = true
+exclude.workspace = true
+
+[features]
+default = ["jemalloc"]
+jemalloc = ["rblib/jemalloc"]
+debug = ["tokio/full", "tokio/tracing", "dep:console-subscriber"]
+
+[dependencies]
+rblib = { workspace = true }
+rollup-boost-types = { workspace = true }
+
+futures = { workspace = true }
+tokio = { workspace = true }
+tokio-tungstenite = { workspace = true }
+parking_lot = { workspace = true }
+eyre = { workspace = true }
+moka = { workspace = true }
+tracing = { workspace = true }
+clap = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+itertools = { workspace = true }
+url = { workspace = true }
+rand = { workspace = true }
+derive_more = { workspace = true }
+shellexpand = { workspace = true }
+humantime = { workspace = true }
+atomic-time = { workspace = true }
+secp256k1 = { workspace = true }
+jsonrpsee = { workspace = true }
+console-subscriber = { workspace = true, optional = true }
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+rblib = { workspace = true, features = ["test-utils"] }
+
+dashmap = { workspace = true }
+orx-concurrent-vec = { workspace = true }
+itertools = { workspace = true }
 
 [lints.rust]
 type_alias_bounds = "allow"

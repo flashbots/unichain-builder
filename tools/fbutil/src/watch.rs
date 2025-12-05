@@ -5,7 +5,7 @@ use {
 	colored::Colorize,
 	futures::StreamExt,
 	human_format::Formatter,
-	rollup_boost_types::flashblocks::FlashblocksPayloadV1,
+	rblib::alloy::optimism::rpc_types_engine::OpFlashblockPayload,
 	std::time::Instant,
 	tokio_tungstenite::{connect_async, tungstenite::Message},
 };
@@ -18,7 +18,7 @@ pub async fn run(cli: &Cli, _: &WatchArgs) -> eyre::Result<()> {
 	println!("Connected to {}", cli.ws);
 
 	let mut prev_at: Option<Instant> = None;
-	let mut prev: Option<FlashblocksPayloadV1> = None;
+	let mut prev: Option<OpFlashblockPayload> = None;
 
 	while let Some(msg) = stream.next().await {
 		let now = Instant::now();
@@ -31,7 +31,7 @@ pub async fn run(cli: &Cli, _: &WatchArgs) -> eyre::Result<()> {
 			eyre::bail!("Received non-text message: {msg:?}");
 		};
 
-		let block: FlashblocksPayloadV1 = serde_json::from_str(&msg)?;
+		let block: OpFlashblockPayload = serde_json::from_str(&msg)?;
 
 		if block.index == 0 {
 			println!(); // start of new block

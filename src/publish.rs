@@ -16,16 +16,27 @@ use {
 	futures::{SinkExt, StreamExt},
 	parking_lot::RwLock,
 	rblib::{
-		alloy::{consensus::BlockHeader, eips::Encodable2718, primitives::U256},
+		alloy::{
+			consensus::BlockHeader,
+			eips::Encodable2718,
+			optimism::rpc_types_engine::{
+				OpFlashblockPayload,
+				OpFlashblockPayloadBase,
+				OpFlashblockPayloadDelta,
+				OpFlashblockPayloadMetadata,
+			},
+			primitives::U256,
+		},
 		prelude::{ext::CheckpointOpExt, *},
 		reth::node::builder::PayloadBuilderAttributes,
 	},
-	rollup_boost_types::flashblocks::{
-		ExecutionPayloadBaseV1,
-		ExecutionPayloadFlashblockDeltaV1,
-		FlashblocksPayloadV1,
+	std::{
+		collections::BTreeMap,
+		io,
+		net::TcpListener,
+		sync::Arc,
+		time::Instant,
 	},
-	std::{io, net::TcpListener, sync::Arc, time::Instant},
 	tokio::{
 		net::TcpStream,
 		sync::{
@@ -58,7 +69,7 @@ pub struct PublishFlashblock {
 	/// Set once at the begining of the payload job, captures immutable
 	/// information about the payload that is being built. This info is derived
 	/// from the payload attributes parameter on the FCU from the EL node.
-	block_base: RwLock<Option<ExecutionPayloadBaseV1>>,
+	block_base: RwLock<Option<OpFlashblockPayloadBase>>,
 
 	/// Metrics for monitoring flashblock publishing.
 	metrics: Metrics,
@@ -107,7 +118,7 @@ impl Step<Flashblocks> for PublishFlashblock {
 		// TODO: Consider moving this into its own step
 		let base = self.block_base.write().take();
 		let (_excess_blob_gas, blob_gas_used) = payload.blob_fields();
-		let diff = ExecutionPayloadFlashblockDeltaV1 {
+		let diff = OpFlashblockPayloadDelta {
 			state_root: sealed_block.block().state_root,
 			receipts_root: sealed_block.block().receipts_root,
 			logs_bloom: sealed_block.block().logs_bloom,
@@ -128,12 +139,17 @@ impl Step<Flashblocks> for PublishFlashblock {
 		let index = flashblock_number.index();
 
 		// Push the contents of the payload
-		if let Err(e) = self.sink.publish(&FlashblocksPayloadV1 {
+		if let Err(e) = self.sink.publish(&OpFlashblockPayload {
 			base,
 			diff,
 			payload_id: ctx.block().payload_id(),
 			index,
-			metadata: serde_json::Value::Null,
+			metadata: OpFlashblockPayloadMetadata {
+				block_number: ctx.block().number(),
+				// TODO: Fill in the following fields
+				new_account_balances: BTreeMap::new(),
+				receipts: BTreeMap::new(),
+			},
 		}) {
 			self.metrics.websocket_publish_errors_total.increment(1);
 			tracing::error!("Failed to publish flashblock to websocket: {e}");
@@ -174,7 +190,7 @@ impl Step<Flashblocks> for PublishFlashblock {
 		self.times.on_job_started(&self.metrics);
 
 		// this remains constant for the entire payload job.
-		self.block_base.write().replace(ExecutionPayloadBaseV1 {
+		self.block_base.write().replace(OpFlashblockPayloadBase {
 			parent_beacon_block_root: ctx
 				.block()
 				.attributes()
@@ -406,7 +422,7 @@ impl WebSocketSink {
 	/// Called once by the `PublishFlashblock` pipeline step every time there is a
 	/// non-empty flashblock that needs to be broadcasted to all external
 	/// subscribers.
-	pub fn publish(&self, payload: &FlashblocksPayloadV1) -> io::Result<usize> {
+	pub fn publish(&self, payload: &OpFlashblockPayload) -> io::Result<usize> {
 		// Serialize the payload to a UTF-8 string
 		// serialize only once, then just copy around only a pointer
 		// to the serialized data for each subscription.

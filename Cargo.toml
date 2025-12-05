@@ -17,8 +17,7 @@ authors = ["Flashbots <info@flashbots.net>"]
 exclude = [".github/"]
 
 [workspace.dependencies]
-rblib = { git = "https://github.com/flashbots/rblib", rev = "9eccd22047c3f8978ae022d575dca749a81684a8" }
-rollup-boost-types = { git = "https://github.com/flashbots/rollup-boost", rev = "b282527e5f46d0915d1e5bdf44338593bc8beb2d" }
+rblib = { git = "https://github.com/flashbots/rblib", rev = "e9f6a539a5d4bb8b3a2cae5f02d8adc05d126c37" }
 
 futures = "0.3"
 tokio = "1.46"
@@ -67,7 +66,6 @@ debug = ["tokio/full", "tokio/tracing", "dep:console-subscriber"]
 
 [dependencies]
 rblib = { workspace = true }
-rollup-boost-types = { workspace = true }
 
 futures = { workspace = true }
 tokio = { workspace = true }

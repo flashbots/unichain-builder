@@ -180,14 +180,27 @@ impl Bundle<Flashblocks> for FlashblocksBundle {
 		&self,
 		block: &SealedHeader<types::Header<Flashblocks>>,
 	) -> bool {
+		// Empty bundles are never eligible
 		if self.transactions().is_empty() {
-			// empty bundles are never eligible
+			return true;
+		}
+
+		// Only single transaction bundles are supported
+		if self.transactions().len() > 1 {
 			return true;
 		}
 
 		if self
 			.max_block_number
 			.is_some_and(|max_bn| max_bn < block.number())
+		{
+			return true;
+		}
+
+		// min_block_number can't be larger than max_block_number
+		if let Some(min_block_number) = self.min_block_number
+			&& let Some(max_block_number) = self.max_block_number
+			&& min_block_number > max_block_number
 		{
 			return true;
 		}

@@ -58,6 +58,14 @@ pub struct BuilderArgs {
 #[derive(Debug, Clone, PartialEq, Eq, clap::Args)]
 #[command(next_help_heading = "Flashblocks")]
 pub struct FlashblocksArgs {
+	/// Whether to enable Flashblocks
+	#[arg(
+		long = "flashblocks.enabled",
+		default_value = "false",
+		env = "ENABLE_FLASHBLOCKS"
+	)]
+	pub flashblocks_enabled: bool,
+
 	/// Flashblocks block-time target
 	#[arg(
 		long = "flashblocks.interval",
@@ -82,7 +90,7 @@ pub struct FlashblocksArgs {
 	/// Enables flashblocks publishing on the specified WebSocket address.
 	/// If no address is specified defaults to 0.0.0.0:10111.
 	#[arg(
-		long = "flashblocks",
+		long = "flashblocks.addr",
     	name = "WS_ADDRESS",
 		env = "FLASHBLOCKS_WS_ADDRESS",
     	num_args = 0..=1,
@@ -197,6 +205,7 @@ impl FlashblocksArgs {
 		Self {
 			interval: Duration::from_millis(250),
 			leeway_time: Duration::from_millis(75),
+			flashblocks_enabled: true,
 			ws_address: SocketAddrV4::new(
 				Ipv4Addr::UNSPECIFIED,
 				Self::get_available_port(),
@@ -216,6 +225,7 @@ impl FlashblocksArgs {
 		Self {
 			interval,
 			leeway_time,
+			flashblocks_enabled: true,
 			ws_address: SocketAddrV4::new(
 				Ipv4Addr::UNSPECIFIED,
 				Self::get_available_port(),
@@ -237,5 +247,45 @@ impl FlashblocksArgs {
 			.local_addr()
 			.expect("Failed to get local address")
 			.port()
+	}
+}
+#[cfg(test)]
+mod tests {
+	use {super::*, clap::Parser};
+
+	#[test]
+	fn test_args_cli_parsing() {
+		let cli = Cli::parse_from([
+			"flashblocks",
+			"node",
+			"--builder.playground=/tmp/playground",
+			"--flashblocks.enabled",
+			"--flashblocks.interval=500ms",
+			"--flashblocks.leeway-time=100ms",
+			"--flashblocks.addr=127.0.0.1:9999",
+			"--flashblocks.calculate-state-root",
+		]);
+
+		let Commands::Node(node) = cli.command else {
+			panic!("Expected node command");
+		};
+
+		let args = node.ext;
+
+		assert!(args.revert_protection);
+
+		assert_eq!(args.playground.unwrap(), PathBuf::from("/tmp/playground"));
+
+		assert!(args.flashblocks_args.flashblocks_enabled);
+		assert_eq!(args.flashblocks_args.interval, Duration::from_millis(500));
+		assert_eq!(
+			args.flashblocks_args.leeway_time,
+			Duration::from_millis(100)
+		);
+		assert_eq!(
+			args.flashblocks_args.ws_address,
+			"127.0.0.1:9999".parse().unwrap()
+		);
+		assert!(args.flashblocks_args.calculate_state_root);
 	}
 }

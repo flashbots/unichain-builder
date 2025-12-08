@@ -6,7 +6,6 @@ use {
 		publish::{PublishFlashblock, WebSocketSink},
 		rpc::TransactionStatusRpc,
 		signer::BuilderSigner,
-		state::TargetFlashblocks,
 		stop::BreakAfterMaxFlashblocks,
 	},
 	platform::Flashblocks,
@@ -20,7 +19,6 @@ use {
 		steps::*,
 	},
 	std::sync::Arc,
-	tracing::info,
 };
 
 mod args;
@@ -84,8 +82,7 @@ fn build_pipeline(
 	cli_args: &BuilderArgs,
 	pool: &OrderPool<Flashblocks>,
 ) -> eyre::Result<Pipeline<Flashblocks>> {
-	// how often a flashblock is published
-	let interval = cli_args.flashblocks_args.interval;
+	let flashblock_interval = cli_args.flashblocks_args.interval;
 
 	// time by which flashblocks will be delivered earlier to account for latency
 	let leeway_time = cli_args.flashblocks_args.leeway_time;
@@ -104,14 +101,7 @@ fn build_pipeline(
 		.clone()
 		.unwrap_or(BuilderSigner::random());
 
-	let target_flashblocks = Arc::new(TargetFlashblocks::new());
-
-	info!(
-		"cli_args.builder_signer.is_some() = {}",
-		cli_args.builder_signer.is_some()
-	);
-
-	let pipeline = Pipeline::<Flashblocks>::named("top")
+	let pipeline = Pipeline::<Flashblocks>::named("block")
 		.with_step(OptimismPrologue)
 		.with_step_if(
 			cli_args.flashtestations.flashtestations_enabled
@@ -123,45 +113,31 @@ fn build_pipeline(
 		)
 		.with_pipeline(
 			Loop,
-			Pipeline::named("n_flashblocks")
+			Pipeline::named("flashblocks")
 				.with_pipeline(
-					Once,
+					Loop,
 					Pipeline::named("single_flashblock")
-						.with_pipeline(
-							Once,
-							Pipeline::named("flashblock_steps")
-								.with_pipeline(
-									Loop,
-									Pipeline::named("inner_flashblock_steps")
-										.with_step(AppendOrders::from_pool(pool).with_ok_on_limit())
-										.with_step(OrderByPriorityFee::default())
-										.with_step_if(
-											cli_args.revert_protection,
-											RemoveRevertedTransactions::default(),
-										)
-										.with_step(BreakAfterDeadline),
-								)
-								.with_step_if(
-									cli_args.builder_signer.is_some(),
-									BuilderEpilogue::with_signer(builder_signer.clone().into())
-										.with_message(|block| {
-											format!("Block Number: {}", block.number())
-										}),
-								)
-								.with_step(PublishFlashblock::new(
-									ws.clone(),
-									cli_args.flashblocks_args.calculate_state_root,
-								))
-								.with_limits(FlashblockLimits::new(
-									interval,
-									target_flashblocks.clone(),
-								)),
+						.with_step(AppendOrders::from_pool(pool).with_ok_on_limit())
+						.with_step(OrderByPriorityFee::default())
+						.with_step_if(
+							cli_args.revert_protection,
+							RemoveRevertedTransactions::default(),
 						)
-						.with_step(BreakAfterDeadline),
+						.with_step(BreakAfterDeadline)
+						.with_limits(FlashblockLimits::new(flashblock_interval)),
 				)
-				.with_step(BreakAfterMaxFlashblocks::new(target_flashblocks)),
-		)
-		.with_limits(Scaled::default().deadline(total_building_time));
+				.with_step_if(
+					cli_args.builder_signer.is_some(),
+					BuilderEpilogue::with_signer(builder_signer.clone().into())
+						.with_message(|block| format!("Block Number: {}", block.number())),
+				)
+				.with_step(PublishFlashblock::new(
+					ws.clone(),
+					cli_args.flashblocks_args.calculate_state_root,
+				))
+				.with_step(BreakAfterMaxFlashblocks::new(flashblock_interval))
+				.with_limits(Scaled::default().deadline(total_building_time)),
+		);
 
 	ws.watch_shutdown(&pipeline);
 	pool.attach_pipeline(&pipeline);

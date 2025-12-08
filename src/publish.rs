@@ -172,7 +172,7 @@ impl Step<Flashblocks> for PublishFlashblock {
 		self.capture_payload_metrics(&this_block_span);
 
 		// Increment flashblock number since we've built the flashblock
-		let next_flashblock_number = flashblock_number.advance();
+		let next_flashblock_number = flashblock_number.next();
 
 		// Place a barrier after each published flashblock to freeze the contents
 		// of the payload up to this point, since this becomes a publicly committed

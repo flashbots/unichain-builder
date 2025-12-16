@@ -9,7 +9,7 @@ resolver = "2"
 
 [workspace.package]
 license = "MIT"
-version = "1.0.0"
+version = "0.0.1"
 edition = "2024"
 rust-version = "1.87"
 repository = "https://github.com/flashbots/unichain-builder"

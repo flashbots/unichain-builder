@@ -78,10 +78,33 @@ pub struct FlashblocksBundle {
 	/// Note: Not recommended because this is subject to the builder node clock.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub max_timestamp: Option<u64>,
+
+	/// Minimum flashblock number at which this bundle can be included.
+	///
+	/// Flashblocks are preconfirmations that are built incrementally. This
+	/// field along with `maxFlashblockNumber` allows bundles to be scheduled
+	/// for more precise execution.
+	#[serde(
+		default,
+		with = "rblib::alloy::serde::quantity::opt",
+		skip_serializing_if = "Option::is_none"
+	)]
+	pub min_flashblock_number: Option<u64>,
+
+	/// Maximum flashblock number at which this bundle can be included.
+	///
+	/// Similar to `minFlashblockNumber`, this sets an upper bound on which
+	/// flashblocks can include this bundle.
+	#[serde(
+		default,
+		with = "rblib::alloy::serde::quantity::opt",
+		skip_serializing_if = "Option::is_none"
+	)]
+	pub max_flashblock_number: Option<u64>,
 }
 
+#[cfg(test)]
 impl FlashblocksBundle {
-	#[allow(dead_code)]
 	pub fn with_transactions(
 		txs: Vec<Recovered<types::Transaction<Flashblocks>>>,
 	) -> Self {
@@ -93,6 +116,8 @@ impl FlashblocksBundle {
 			max_block_number: None,
 			min_timestamp: None,
 			max_timestamp: None,
+			min_flashblock_number: None,
+			max_flashblock_number: None,
 		}
 	}
 }
@@ -126,7 +151,7 @@ impl Bundle<Flashblocks> for FlashblocksBundle {
 	fn is_eligible(
 		&self,
 		block: &BlockContext<Flashblocks>,
-		_ctx: &FlashblockNumber,
+		flashblock_number: &FlashblockNumber,
 	) -> Eligibility {
 		if self.txs.is_empty() {
 			// empty bundles are never eligible
@@ -163,6 +188,23 @@ impl Bundle<Flashblocks> for FlashblocksBundle {
 		{
 			// this bundle is not eligible yet
 			return Eligibility::TemporarilyIneligible;
+		}
+
+		if self
+			.min_flashblock_number
+			.is_some_and(|min_flashblock_number| {
+				min_flashblock_number > flashblock_number.current()
+			}) {
+			// this bundle is not eligible yet
+			return Eligibility::TemporarilyIneligible;
+		}
+
+		if self
+			.max_flashblock_number
+			.is_some_and(|max_flashblock_number| {
+				max_flashblock_number < flashblock_number.current()
+			}) {
+			return Eligibility::PermanentlyIneligible;
 		}
 
 		Eligibility::Eligible
@@ -257,6 +299,12 @@ impl Bundle<Flashblocks> for FlashblocksBundle {
 		}
 		if let Some(max_ts) = self.max_timestamp {
 			hasher.update(max_ts.to_be_bytes());
+		}
+		if let Some(min_flashblock_number) = self.min_flashblock_number {
+			hasher.update(min_flashblock_number.to_be_bytes());
+		}
+		if let Some(max_flashblock_number) = self.max_flashblock_number {
+			hasher.update(max_flashblock_number.to_be_bytes());
 		}
 
 		hasher.finalize()

@@ -28,7 +28,7 @@ pub struct WebSocketObserver {
 }
 
 impl WebSocketObserver {
-	pub async fn new(socket_addr: SocketAddr) -> eyre::Result<Self> {
+	pub async fn try_new(socket_addr: SocketAddr) -> eyre::Result<Self> {
 		let mut socket_addr = socket_addr;
 		if socket_addr.ip().is_unspecified() {
 			socket_addr.set_ip(IpAddr::V4(Ipv4Addr::LOCALHOST));

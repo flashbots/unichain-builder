@@ -109,6 +109,16 @@ impl Default for BuilderArgs {
 	}
 }
 
+impl Default for FlashblocksArgs {
+	fn default() -> Self {
+		let args = crate::args::Cli::parse_from(["dummy", "node"]);
+		let Commands::Node(node_command) = args.command else {
+			unreachable!()
+		};
+		node_command.ext.flashblocks_args
+	}
+}
+
 /// This trait is used to extend Reth's CLI with additional functionality that
 /// are specific to the OP builder, such as populating default values for CLI
 /// arguments when running in the playground mode or checking the builder mode.
@@ -186,56 +196,4 @@ fn expand_path(s: &str) -> Result<PathBuf> {
 		.into_owned()
 		.parse()
 		.map_err(|e| eyre!("invalid path after expansion: {e}"))
-}
-
-#[cfg(test)]
-impl FlashblocksArgs {
-	/// Configures flashblocks for tests. Handles WS port assignment.
-	pub fn default_on_for_tests() -> Self {
-		use core::net::{Ipv4Addr, SocketAddrV4};
-
-		Self {
-			interval: Duration::from_millis(250),
-			leeway_time: Duration::from_millis(75),
-			ws_address: SocketAddrV4::new(
-				Ipv4Addr::UNSPECIFIED,
-				Self::get_available_port(),
-			)
-			.into(),
-
-			calculate_state_root: true,
-		}
-	}
-
-	pub fn default_on_custom_leeway_time_and_interval_for_tests(
-		leeway_time: Duration,
-		interval: Duration,
-	) -> Self {
-		use core::net::{Ipv4Addr, SocketAddrV4};
-
-		Self {
-			interval,
-			leeway_time,
-			ws_address: SocketAddrV4::new(
-				Ipv4Addr::UNSPECIFIED,
-				Self::get_available_port(),
-			)
-			.into(),
-
-			calculate_state_root: true,
-		}
-	}
-
-	/// Gets an available port by first binding to port 0 -- instructing the OS to
-	/// find and assign one. Then the listener is dropped when this goes out of
-	/// scope, freeing the port for the next time this function is called.
-	fn get_available_port() -> u16 {
-		use std::net::TcpListener;
-
-		TcpListener::bind("127.0.0.1:0")
-			.expect("Failed to bind to random port")
-			.local_addr()
-			.expect("Failed to get local address")
-			.port()
-	}
 }

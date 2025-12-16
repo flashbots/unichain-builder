@@ -1,24 +1,22 @@
 //! Smoke tests for the standard blocks builder
 
 use {
-	crate::{Flashblocks, tests::assert_has_sequencer_tx},
-	rblib::{
-		alloy::{
-			consensus::Transaction,
-			network::TransactionResponse,
-			primitives::{Address, U256},
-		},
-		test_utils::*,
+	crate::{args::BuilderArgs, tests::*},
+	macros::unichain_test,
+	rblib::alloy::{
+		consensus::Transaction,
+		network::TransactionResponse,
+		primitives::{Address, U256},
 	},
 	tracing::debug,
 };
 
 /// This is a smoke test that ensures that sequencer transactions are included
 /// in blocks and that the block generator is functioning correctly.
-#[tokio::test]
-async fn chain_produces_empty_blocks() -> eyre::Result<()> {
+#[unichain_test]
+async fn chain_produces_empty_blocks(harness: Harness) -> eyre::Result<()> {
 	// builders signer is not configured, so won't produce a builder tx
-	let (node, _) = Flashblocks::test_node().await?;
+	let node = harness.node();
 
 	for i in 1..5 {
 		let block = node.next_block().await?;
@@ -32,13 +30,13 @@ async fn chain_produces_empty_blocks() -> eyre::Result<()> {
 	Ok(())
 }
 
-#[tokio::test]
-async fn chain_produces_blocks_with_txs() -> eyre::Result<()> {
+#[unichain_test]
+async fn chain_produces_blocks_with_txs(harness: Harness) -> eyre::Result<()> {
 	const BLOCKS: usize = 5;
 	const TXS_PER_BLOCK: usize = 5;
 
 	// builders signer is not configured, so won't produce a builder tx
-	let (node, _) = Flashblocks::test_node().await?;
+	let node = harness.node();
 
 	for i in 1..=BLOCKS {
 		let mut txs = Vec::with_capacity(TXS_PER_BLOCK);
@@ -63,10 +61,12 @@ async fn chain_produces_blocks_with_txs() -> eyre::Result<()> {
 
 /// Ensure that the chain produces blocks with a builder transaction
 /// when the builder signer is provided in the CLI arguments.
-#[tokio::test]
-async fn blocks_have_builder_tx() -> eyre::Result<()> {
-	let (node, _) =
-		Box::pin(Flashblocks::test_node_with_builder_signer()).await?;
+#[unichain_test(args = BuilderArgs {
+    builder_signer: Some(FundedAccounts::signer(0).into()),
+    ..Default::default()
+})]
+async fn blocks_have_builder_tx(harness: Harness) -> eyre::Result<()> {
+	let node = harness.node();
 
 	let block = node.next_block().await?;
 

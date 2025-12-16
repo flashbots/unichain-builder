@@ -2,6 +2,7 @@
 members = [
     ".",            # The main rblib library
     "tools/fbutil",
+    "src/tests/framework/macros"
 ]
 resolver = "2"
 
@@ -93,6 +94,7 @@ tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
 rblib = { workspace = true, features = ["test-utils"] }
+macros = { path = "src/tests/framework/macros" }
 
 dashmap = { workspace = true }
 orx-concurrent-vec = { workspace = true }

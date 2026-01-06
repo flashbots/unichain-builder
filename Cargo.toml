@@ -18,7 +18,7 @@ authors = ["Flashbots <info@flashbots.net>"]
 exclude = [".github/"]
 
 [workspace.dependencies]
-rblib = { git = "https://github.com/flashbots/rblib", rev = "e9f6a539a5d4bb8b3a2cae5f02d8adc05d126c37" }
+rblib = { git = "https://github.com/flashbots/rblib", rev = "6911bba2c9d2db67b58eabc52bd62b9aef070d86" }
 
 futures = "0.3"
 tokio = "1.46"

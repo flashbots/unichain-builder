@@ -7,6 +7,7 @@ use {
 		rpc::TransactionStatusRpc,
 		signer::BuilderSigner,
 		stop::BreakAfterMaxFlashblocks,
+		version::set_version_metric,
 	},
 	platform::Flashblocks,
 	rblib::{
@@ -33,6 +34,7 @@ mod rpc;
 mod signer;
 mod state;
 mod stop;
+mod version;
 
 #[cfg(test)]
 mod tests;
@@ -69,6 +71,10 @@ fn main() {
 				.extend_rpc_modules(move |mut rpc_ctx| {
 					pool.attach_rpc(&mut rpc_ctx)?;
 					tx_status_rpc.attach_rpc(&mut rpc_ctx)?;
+					Ok(())
+				})
+				.on_node_started(move |_ctx| {
+					set_version_metric();
 					Ok(())
 				})
 				.launch()

@@ -16,7 +16,6 @@ use {
 			node::{OpAddOns, OpEngineApiBuilder, OpEngineValidatorBuilder, OpNode},
 			rpc::OpEthApiBuilder,
 		},
-		steps::*,
 	},
 	std::sync::Arc,
 	tracing::info,

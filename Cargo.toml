@@ -47,10 +47,13 @@ console-subscriber = "0.4"
 tracing-subscriber = "0.3.20"
 dashmap = "6.1"
 orx-concurrent-vec = "3.7.0"
+vergen = "9.0.6"
+vergen-git2 = "1.0.7"
 
 [package]
 name = "unichain-builder"
 description = "Next-Gen Optimism L2 Block Builder"
+build = "build.rs"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -91,6 +94,10 @@ secp256k1 = { workspace = true }
 jsonrpsee = { workspace = true }
 console-subscriber = { workspace = true, optional = true }
 tracing-subscriber = { workspace = true }
+
+[build-dependencies]
+vergen = { workspace = true, features = ["build", "cargo", "emit_and_set"] }
+vergen-git2.workspace = true
 
 [dev-dependencies]
 rblib = { workspace = true, features = ["test-utils"] }

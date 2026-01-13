@@ -11,24 +11,24 @@ resolver = "2"
 license = "MIT"
 version = "0.0.1"
 edition = "2024"
-rust-version = "1.87"
+rust-version = "1.91"
 repository = "https://github.com/flashbots/unichain-builder"
 homepage = "https://github.com/flashbots/unichain-builder"
 authors = ["Flashbots <info@flashbots.net>"]
 exclude = [".github/"]
 
 [workspace.dependencies]
-rblib = { git = "https://github.com/flashbots/rblib", rev = "6911bba2c9d2db67b58eabc52bd62b9aef070d86" }
+rblib = { git = "https://github.com/flashbots/rblib", rev = "c714ef9be7f29c760838daf0e5174ee97ec648ee" }
 
 futures = "0.3"
-tokio = "1.46"
-tokio-tungstenite = "0.27"
+tokio = { version = "1.46", features = ["full", "tracing"] }
+tokio-tungstenite = "0.26.2"
 parking_lot = "0.12"
 eyre = "0.6"
 moka = "0.12"
 tracing = "0.1"
 clap = { version = "4.4", features = ["derive", "env", "string"] }
-reqwest = "0.12.24"
+reqwest = "0.13.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9.33"
@@ -43,8 +43,8 @@ atomic-time = "0.1"
 
 secp256k1 = "0.30"
 jsonrpsee = "0.26.0"
-console-subscriber = "0.4"
-tracing-subscriber = "0.3.20"
+console-subscriber = "0.5.0"
+tracing-subscriber = "0.3.22"
 dashmap = "6.1"
 orx-concurrent-vec = "3.7.0"
 vergen = "9.0.6"
@@ -66,7 +66,7 @@ exclude.workspace = true
 [features]
 default = ["jemalloc"]
 jemalloc = ["rblib/jemalloc"]
-debug = ["tokio/full", "tokio/tracing", "dep:console-subscriber"]
+debug = ["tokio/full", "tokio/tracing"]
 
 [dependencies]
 rblib = { workspace = true }
@@ -92,7 +92,7 @@ humantime = { workspace = true }
 atomic-time = { workspace = true }
 secp256k1 = { workspace = true }
 jsonrpsee = { workspace = true }
-console-subscriber = { workspace = true, optional = true }
+console-subscriber.workspace = true
 tracing-subscriber = { workspace = true }
 
 [build-dependencies]

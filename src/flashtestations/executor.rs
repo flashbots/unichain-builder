@@ -389,17 +389,15 @@ fn validate_event_logged(
 		.results()
 		.first()
 		.context("should have a first element")?
-	{
-		if !logs
+		&& !logs
 			.iter()
 			.flat_map(|log| log.topics())
 			.contains(&expected_topic)
-		{
-			bail!(
-				"did not find expected event {:?} in transaction logs",
-				expected_topic
-			)
-		}
+	{
+		bail!(
+			"did not find expected event {:?} in transaction logs",
+			expected_topic
+		)
 	}
 
 	Ok(())

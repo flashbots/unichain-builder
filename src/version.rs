@@ -16,6 +16,6 @@ pub fn set_version_metric() {
 		("long_version", env!("LONG_VERSION")),
 	];
 
-	let gauge = gauge!("builder_version", &labels);
+	let gauge = gauge!("builder_info", &labels);
 	gauge.set(1);
 }

@@ -119,3 +119,7 @@ must_use_candidate = "allow"
 redundant_closure_for_method_calls = "allow"
 similar_names = "allow"
 cast_precision_loss = "allow"
+
+[patch.crates-io]
+vergen = { git = "https://github.com/rustyhorde/vergen", rev = "0875fb74" }
+vergen-git2 = { git = "https://github.com/rustyhorde/vergen", rev = "0875fb74" }

@@ -13,9 +13,21 @@ use {
 	rblib::{
 		pool::*,
 		prelude::*,
-		reth::optimism::{
-			node::{OpAddOns, OpEngineApiBuilder, OpEngineValidatorBuilder, OpNode},
-			rpc::OpEthApiBuilder,
+		reth::{
+			builder::{NodeBuilder, WithLaunchContext},
+			cli::commands::launcher::Launcher,
+			db::DatabaseEnv,
+			optimism::{
+				chainspec::OpChainSpec,
+				cli::chainspec::OpChainSpecParser,
+				node::{
+					OpAddOns,
+					OpEngineApiBuilder,
+					OpEngineValidatorBuilder,
+					OpNode,
+				},
+				rpc::OpEthApiBuilder,
+			},
 		},
 		steps::*,
 	},
@@ -40,49 +52,66 @@ mod version;
 mod tests;
 
 fn main() {
+	#[cfg_attr(not(feature = "debug"), allow(unused_mut))]
+	let mut cli = Cli::parsed().configure();
+
 	#[cfg(feature = "debug")]
-	console_subscriber::init();
+	{
+		let console_layer = console_subscriber::spawn();
+		cli
+			.access_tracing_layers()
+			.expect("failed to access tracing layers")
+			.add_layer(console_layer);
+	}
 
-	Cli::parsed()
-		.run(|builder, cli_args| async move {
-			let pool = OrderPool::<Flashblocks>::default();
-			let pipeline = build_pipeline(&cli_args, &pool)?;
-			let opnode = OpNode::new(cli_args.rollup_args.clone());
-			let tx_status_rpc = TransactionStatusRpc::new(&pipeline);
+	cli.run(LauncherImpl).unwrap();
+}
 
-			let addons: OpAddOns<
-				_,
-				OpEthApiBuilder,
-				OpEngineValidatorBuilder,
-				OpEngineApiBuilder<OpEngineValidatorBuilder>,
-			> = opnode
-				.add_ons_builder::<types::RpcTypes<Flashblocks>>()
-				.build();
+struct LauncherImpl;
 
-			let handle = builder
-				.with_types::<OpNode>()
-				.with_components(
-					opnode
-						.components()
-						.attach_pool(&pool)
-						.payload(pipeline.into_service()),
-				)
-				.with_add_ons(addons)
-				.extend_rpc_modules(move |mut rpc_ctx| {
-					pool.attach_rpc(&mut rpc_ctx)?;
-					tx_status_rpc.attach_rpc(&mut rpc_ctx)?;
-					Ok(())
-				})
-				.on_node_started(move |_ctx| {
-					set_version_metric();
-					Ok(())
-				})
-				.launch()
-				.await?;
+impl Launcher<OpChainSpecParser, BuilderArgs> for LauncherImpl {
+	async fn entrypoint(
+		self,
+		builder: WithLaunchContext<NodeBuilder<Arc<DatabaseEnv>, OpChainSpec>>,
+		builder_args: BuilderArgs,
+	) -> eyre::Result<()> {
+		let pool = OrderPool::<Flashblocks>::default();
+		let pipeline = build_pipeline(&builder_args, &pool)?;
+		let opnode = OpNode::new(builder_args.rollup_args.clone());
+		let tx_status_rpc = TransactionStatusRpc::new(&pipeline);
 
-			handle.wait_for_node_exit().await
-		})
-		.unwrap();
+		let addons: OpAddOns<
+			_,
+			OpEthApiBuilder,
+			OpEngineValidatorBuilder,
+			OpEngineApiBuilder<OpEngineValidatorBuilder>,
+		> = opnode
+			.add_ons_builder::<types::RpcTypes<Flashblocks>>()
+			.build();
+
+		let handle = builder
+			.with_types::<OpNode>()
+			.with_components(
+				opnode
+					.components()
+					.attach_pool(&pool)
+					.payload(pipeline.into_service()),
+			)
+			.with_add_ons(addons)
+			.extend_rpc_modules(move |mut rpc_ctx| {
+				pool.attach_rpc(&mut rpc_ctx)?;
+				tx_status_rpc.attach_rpc(&mut rpc_ctx)?;
+				Ok(())
+			})
+			.on_node_started(move |_ctx| {
+				set_version_metric();
+				Ok(())
+			})
+			.launch()
+			.await?;
+
+		handle.wait_for_node_exit().await
+	}
 }
 
 fn build_pipeline(

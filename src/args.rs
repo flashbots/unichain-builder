@@ -33,6 +33,27 @@ pub struct BuilderArgs {
 	)]
 	pub revert_protection: bool,
 
+	/// Whether to enable top-of-block pre-simulation. When enabled,
+	/// pending pool transactions are simulated at the top of each new
+	/// block before the building loop starts. Transactions that revert
+	/// are removed from the pool to avoid wasting block building time.
+	#[arg(
+		long = "builder.presim",
+		default_value = "true",
+		env = "PRESIM_ENABLED"
+	)]
+	pub presim: bool,
+
+	/// Whether to use a random coinbase address during pre-simulation.
+	/// This prevents adversaries from detecting the simulation
+	/// environment by checking the COINBASE opcode.
+	#[arg(
+		long = "builder.presim-random-coinbase",
+		default_value = "true",
+		env = "PRESIM_RANDOM_COINBASE"
+	)]
+	pub presim_random_coinbase: bool,
+
 	/// Builder secret key for signing last transaction in block
 	#[arg(long = "rollup.builder-secret-key", env = "BUILDER_SECRET_KEY")]
 	pub builder_signer: Option<BuilderSigner>,

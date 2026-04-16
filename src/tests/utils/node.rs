@@ -82,6 +82,30 @@ impl Flashblocks {
 		Ok((node, ws_addr))
 	}
 
+	/// Creates a test node with presim enabled but revert protection
+	/// disabled. This configuration isolates the presim step for testing.
+	pub async fn test_node_with_presim_only()
+	-> eyre::Result<(LocalNode<Flashblocks, OptimismConsensusDriver>, SocketAddr)>
+	{
+		let flashblocks_args = FlashblocksArgs::default_on_for_tests();
+
+		#[allow(clippy::missing_panics_doc)]
+		let ws_addr = flashblocks_args.ws_address;
+
+		let mut node = Flashblocks::test_node_with_cli_args(BuilderArgs {
+			flashblocks_args,
+			revert_protection: false,
+			presim: true,
+			presim_random_coinbase: true,
+			..Default::default()
+		})
+		.await?;
+
+		node.set_block_time(Duration::from_secs(2));
+
+		Ok((node, ws_addr))
+	}
+
 	// The same as test_node, but with revert protection turned off
 	pub async fn test_node_with_revert_protection_off()
 	-> eyre::Result<(LocalNode<Flashblocks, OptimismConsensusDriver>, SocketAddr)>

@@ -3,6 +3,7 @@ use {
 		args::{BuilderArgs, Cli, CliExt},
 		flashtestations::FlashtestationsPrologue,
 		limits::FlashblockLimits,
+		presim::PreSimulateOrders,
 		publish::{PublishFlashblock, WebSocketSink},
 		rpc::TransactionStatusRpc,
 		signer::BuilderSigner,
@@ -29,6 +30,7 @@ mod flashtestations;
 mod limits;
 mod platform;
 mod playground;
+mod presim;
 mod primitives;
 mod publish;
 mod rpc;
@@ -121,6 +123,10 @@ fn build_pipeline(
 				cli_args.flashtestations.clone(),
 				builder_signer.clone(),
 			)?,
+		)
+		.with_step_if(
+			cli_args.presim,
+			PreSimulateOrders::new(pool, cli_args.presim_random_coinbase),
 		)
 		.with_pipeline(
 			Loop,
